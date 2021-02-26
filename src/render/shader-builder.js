@@ -1,4 +1,4 @@
-import {ShaderStage, ShaderValueType} from "./types.js"
+import {ShaderStage, ShaderValueType} from "./gpu-types.js"
 
 /**
  * @class
@@ -61,28 +61,13 @@ export class ShaderBuilder
 
             for (let propertyName in block)
             {
-                this.$(block[propertyName] + " " + propertyName + ";");
+                let typeInfo = block[propertyName];
+
+                this.$(typeInfo.id + " " + propertyName + ";");
             }
 
             this.$("};\n" + "UNIFORM " + blockName +  " u_" + blockName + ";");
         }
-
-
-        /*
-
-        this.$(`
-        
-        struct Globals {
-            mat4 viewProjection;
-        };
-
-        UNIFORM Globals u_Globals;
-        `);
-
-        this.modules.forEach(mod => {
-            mod.addUniforms(this)
-        });
-        */
     }
 
     _addVaryings()

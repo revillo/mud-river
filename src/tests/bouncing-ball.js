@@ -1,11 +1,11 @@
-import { ShaderStage, BufferType, BufferUsage } from '../render/types.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
 import { Rasterizer } from '../render/rasterizer.js';
 import { GPUContextGL} from '../render/gpu.js'
 import { ShaderBuilder} from '../render/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { Sphere } from '../shape/sphere.js'
 import { ShaderNormals } from '../render/shader-mods/normals.js'
-import { DefaultAttributes } from '../render/attribute.js';
+import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
 
 var start = function()
 {        
@@ -42,30 +42,9 @@ var start = function()
         gpu.uploadArrayBuffer(vertBuffer, sphereGeometry.vertices);
         gpu.uploadArrayBuffer(indexBuffer, sphereGeometry.indices);
        
-        const sphereVertexLayout = 
-        {
-            a_Position : 
-            {
-                buffer: vertBuffer,
-                location : DefaultAttributes.Position.location,
-                offset: 0,
-                stride: 4 * 8,
-                count: 3,
-                type : "FLOAT",
-                isNormalized : false
-            },
-
-            a_Normal : 
-            {
-                buffer: vertBuffer,
-                location : DefaultAttributes.Normal.location,
-                offset: 4 * 3,
-                stride: 4 * 8,
-                count: 3,
-                type : "FLOAT",
-                isNormalized : false
-            }
-        };
+               
+        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.Position, DefaultAttributes.Normal, DefaultAttributes.UV0]); 
+        const sphereVertexLayout = attrGen.generateAttributeLayout(vertBuffer, 0);
 
         const indexLayout = 
         {

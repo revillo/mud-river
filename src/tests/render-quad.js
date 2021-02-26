@@ -1,9 +1,9 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/types.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
 import { Rasterizer } from '../render/rasterizer.js';
 import { GPUContextGL} from '../render/gpu.js'
 import { ShaderBuilder} from '../render/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
-import { DefaultAttributes } from '../render/attribute.js';
+import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
 
 var start = function()
 {        
@@ -49,19 +49,9 @@ var start = function()
         gpu.uploadArrayBuffer(vertBuffer, new Float32Array(triPositions));
         gpu.uploadArrayBuffer(indexBuffer, new Uint16Array(triIndices));
 
-        const triVertexLayout = 
-        {
-            a_Position : 
-            {
-                buffer: vertBuffer,
-                location : DefaultAttributes.Position.location,
-                offset: 0,
-                stride: 12,
-                count: 3,
-                type : ShaderValueType.FLOAT,
-                isNormalized : false
-            }
-        };
+
+        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.Position]); 
+        const triVertexLayout = attrGen.generateAttributeLayout(vertBuffer, 0);
 
         const indexLayout = 
         {

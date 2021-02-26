@@ -1,3 +1,5 @@
+import { ShaderValueType } from "./gpu-types.js";
+
  /**
   * @class
   */
@@ -157,7 +159,7 @@ export class GPUContextGL
      * @param {ArrayBuffer} arrayBuffer 
      * @param {number} [dstOffset]
      * @param {number} [srcOffset]
-     * @param {number} [length] - only avaialable for webgl2
+     * @param {number} [length]
      */
     uploadArrayBuffer(gpuBuffer, arrayBuffer, dstOffset, srcOffset, length)
     {
@@ -175,6 +177,7 @@ export class GPUContextGL
         {
             gl.bufferData(target, arrayBuffer, gpuBuffer.usage, srcOffset, length);
             gpuBuffer.inited = true;
+            gpuBuffer.size = arrayBuffer.buffer.byteLength;
         }
 
         gl.bindBuffer(target, null);
@@ -184,79 +187,46 @@ export class GPUContextGL
 
     /**
      * 
-     * @param {Map<string, AttributeLayout>} vertexLayout 
+     * @param {Map<string, AttributeLayout>} attributeLayout 
      * @param {number} indexCount
-     * @param {GPUBuffer} [indexBuffer] 
-     * @param {number} [startIndex]
+     * @param {IndexLayout} [indexLayout] 
      * @return {GPUGeometryBinding}
      */
-    createGeometryBinding(vertexLayout, indexLayout, instanceLayout)
+    createGeometryBinding(attributeLayout, indexLayout)
     {
         const gl = this.gl;
         const vao = gl.createVertexArray();
         
         gl.bindVertexArray(vao);
 
-        for (let attributeName in vertexLayout)
+        for (let attributeName in attributeLayout)
         {
             /**
              * @type {AttributeLayout}
              */
-            const attribute = vertexLayout[attributeName];
+            const attribute = attributeLayout[attributeName];
             gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
-            gl.enableVertexAttribArray(attribute.location);
-            gl.vertexAttribPointer(attribute.location, attribute.count, gl[attribute.type], attribute.isNormalized, attribute.stride, attribute.offset);
-        }
- 
-        for (let attributeName in (instanceLayout || []))
-        {
-            const attribute = instanceLayout[attributeName];
-            gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
+            let offset = attribute.offset;
 
-            if (attribute.type == "MAT4" && attribute.count == 1)
+            for (let i = 0; i < attribute.type.attribLocs; i++)
             {
-                const startLocation = attribute.location;
-
-                for (let i = 0; i < 4; ++i) 
+                const loc = attribute.location + i;
+                gl.enableVertexAttribArray(loc);
+                gl.vertexAttribPointer(loc, attribute.type.attribCount, gl[attribute.type.attribType], attribute.isNormalized, attribute.stride, offset);
+                if (attribute.instanced)
                 {
-                    const loc = startLocation + i;
-                    gl.enableVertexAttribArray(loc);
-                    
-                    const offset = i * 16 + attribute.offset;  
-                    gl.vertexAttribPointer(
-                        loc,              
-                        4,                //vec4                
-                        gl.FLOAT, 
-                        false,            //normalized
-                        attribute.stride, 
-                        offset           
-                    );
-
-                    // this line says this attribute only changes for each 1 instance
-                    gl.vertexAttribDivisor(loc, 1);
+                    gl.vertexAttribDivisor(loc, attribute.instanced);
                 }
-            }
-            else
-            {
-                this._reportError("Bad Attribute", attribute.count + " " + attribute.type);
+                offset += attribute.type.bytes / attribute.type.attribLocs;
             }
         }
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-        var indexType = gl.UNSIGNED_SHORT;
+        var indexType = indexLayout.type || gl.UNSIGNED_SHORT;
 
         if (indexLayout.buffer)
         {
-            if (indexType instanceof Uint16Array)
-            {
-                indexType = gl.UNSIGNED_SHORT;
-            }
-            else if (indexType instanceof Uint32Array)
-            {
-                indexType = gl.UNSIGNED_INT;
-            }
-
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexLayout.buffer.glBuffer);
         }
 
@@ -319,7 +289,7 @@ export class GPUContextGL
     /**
      * 
      * @param {GPUGeometryBinding} meshBinding 
-     * @param {*} [cmd] 
+     * @param {number} instanceCount 
      */
     rasterizeMesh(geometryBinding, instanceCount)
     {
@@ -336,8 +306,7 @@ export class GPUContextGL
             }
             else
             {
-                //todo integer types
-                gl.drawElements(geometryBinding.mode, geometryBinding.indexCount, gl.UNSIGNED_SHORT, geometryBinding.startIndex);
+                gl.drawElements(geometryBinding.mode, geometryBinding.indexCount, geometryBinding.indexType, geometryBinding.startIndex);
             }
         }
         else

@@ -1,4 +1,4 @@
-import { ShaderStage, BufferType, BufferUsage } from '../render/types.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
 import { Rasterizer } from '../render/rasterizer.js';
 import { GPUContextGL} from '../render/gpu.js'
 import { ShaderBuilder} from '../render/shader-builder.js'
@@ -6,7 +6,7 @@ import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { Sphere } from '../shape/sphere.js'
 import { ShaderNormals } from '../render/shader-mods/normals.js'
 import { ShaderInstances } from '../render/shader-mods/instances.js'
-import { DefaultAttributes } from '../render/attribute.js';
+import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
 
 var start = function()
 {        
@@ -56,32 +56,15 @@ var start = function()
         
         gpu.uploadArrayBuffer(instanceBuffer, instances);
         
-        const sphereVertexLayout = 
-        {
-            a_Position : 
-            {
-                buffer : vertBuffer,
-                location : DefaultAttributes.Position.location,
-                offset: 0,
-                stride: 4 * 8,
-                count: 3,
-                type : "FLOAT",
-                isNormalized : false
-            },
+        var attrGen = new AttributeLayoutGenerator(
+            [DefaultAttributes.Position, DefaultAttributes.Normal, DefaultAttributes.UV0], 
+            [DefaultAttributes.InstanceMatrix]
+            ); 
 
-            a_Normal : 
-            {
-                buffer : vertBuffer,
-                location : DefaultAttributes.Normal.location,
-                offset: 4 * 3,
-                stride: 4 * 8,
-                count: 3,
-                type : "FLOAT",
-                isNormalized : false
-            }
-        };
+        const sphereVertexLayout = attrGen.generateAttributeLayout(vertBuffer, 0, instanceBuffer, 0);
 
-        
+        console.log(sphereVertexLayout);
+
         const instanceLayout = 
         {
             a_InstanceMatrix :
@@ -91,7 +74,7 @@ var start = function()
                 offset: 0,
                 count : 1,
                 stride: bytesPerMatrix,
-                type : "MAT4",
+                type : ShaderValueType.MAT4,
                 isNormalized: false
             }
         }

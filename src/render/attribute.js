@@ -1,18 +1,15 @@
-import { ShaderValueType } from "./types.js";
+import { ShaderValueType } from "./gpu-types.js";
 
 const DefaultAttributes = 
 {
      Position : {id: "a_Position", type: ShaderValueType.VEC3}
     ,Normal : {id: "a_Normal", type: ShaderValueType.VEC3}
-    ,InstanceMatrix : {id : "a_InstanceMatrix", type : ShaderValueType.MAT4}
-    
-    /*
     ,UV0 : {id: "a_UV0", type: ShaderValueType.VEC2}
     ,UV1 : {id: "a_UV1", type: ShaderValueType.VEC2}
     ,BoneWeights : {id: "a_BoneWeights", type: ShaderValueType.VEC4}
     ,BoneIndices : {id: "a_BoneIndices", type: ShaderValueType.IVEC4}
+    ,InstanceMatrix : {id : "a_InstanceMatrix", type : ShaderValueType.MAT4}
     ,InstanceColor : {id : "a_InstanceColor", type : ShaderValueType.VEC4}
-    */
 }
 
 function ComputeLocations()
@@ -21,70 +18,64 @@ function ComputeLocations()
     for (var a in DefaultAttributes)
     {
         DefaultAttributes[a].location = location;
-        location += 1;
-        
-        if (DefaultAttributes[a].type == ShaderValueType.MAT4)
-        {
-            location += 3;
-        }
+        location += DefaultAttributes[a].type.attribLocs;
     }
 }
 
+console.log(DefaultAttributes);
+
 ComputeLocations();
-
-/*
-const DefaultAttributeLocations = {
-    
-    a_Position : 0,
-    a_Normal: 1,
-    a_UV0 : 2,
-    a_UV1 : 3,
-    a_BoneWeights: 4,
-    a_BoneIndices: 5,
-
-    //6,7??
-
-    a_InstanceMatrix : 8, // 9 // 10 // 11
-    a_InstanceColor : 12
-};
-*/
 
 class AttributeLayoutGenerator 
 {
-    constructor(attributeList, instanceList)
+    constructor(vertexAttribtues, instanceAttributes)
     {
-        this.instanceList = instanceList;
-        this.attributeList = attributeList;
+        this.instanceAttributes = instanceAttributes;
+        this.vertexAttribtues = vertexAttribtues;
+        this.layout = {};
     }
 
-    generateVertexLayout(buffer, offset)
+
+    _generateAttributeHelper(layout, attributes, buffer, offset, instances, stride)
     {
-        const attributeLayout = {};
-        var offset = 0;
+        offset = offset || 0;
 
-        for (let attributeName in this.attributeList)
+        if(stride == undefined)
         {
-            const attribute = this.attributeList[attributeName];
-            const location = attribute.location;
-
-            attributeLayout[attribute.id] = 
+            stride = 0;
+            for (let attributeName in attributes)
             {
-                buffer : buffer,
-                location : location,
-                offset: offset,
-                stride: 4 * 8,
-                count: 3,
-                type : ShaderValueType.FLOAT,
-                isNormalized : false
+                const attribute = attributes[attributeName];
+                const type = attribute.type;
+                stride += type.bytes;
             }
         }
 
-        return attributeLayout;
+        for (let attributeName in attributes)
+        {
+            const attribute = attributes[attributeName];
+            const type = attribute.type;
+
+            layout[attribute.id] = 
+            {
+                buffer : buffer,
+                location : attribute.location,
+                offset: offset,
+                stride: stride,
+                type: type,
+                isNormalized : false,
+                instanced : instances
+            }
+            
+            offset += type.bytes;
+        }
     }
 
-    generateInstanceLayout(buffer, offset)
+    generateAttributeLayout(vertexBuffer, vertexBufferOffset, instanceBuffer, instanceBufferOffset)
     {
-        
+        this._generateAttributeHelper(this.layout, this.vertexAttribtues, vertexBuffer, vertexBufferOffset, 0);
+        this._generateAttributeHelper(this.layout, this.instanceAttributes, instanceBuffer, instanceBufferOffset, 1);
+        return this.layout;
     }
 
 }

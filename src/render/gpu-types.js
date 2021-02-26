@@ -21,32 +21,14 @@
  */
 const ShaderValueType =
 {
-    FLOAT : "FLOAT",
-    MAT4 :  "MAT4",
-    COLOR3 : "COLOR3",
-    COLOR4 : "COLOR4",
-    VEC2 : "VEC2",
-    VEC3 : "VEC3",
-    VEC4 : "VEC4",
-    IVEC4 : "IVEC4"
-}
-
-
-/**
- * @readonly
- * @enum {number}
- * 
- */
-const ShaderValueSize =
-{
-    FLOAT : 4,
-    MAT4 :  64,
-    COLOR3 : 3,
-    COLOR4 : 4,
-    VEC2 : 8,
-    VEC3 : 12,
-    VEC4 : 16,
-    IVEC4 : 16
+    FLOAT : {id : "FLOAT", bytes: 4, attribLocs: 1, attribType: "FLOAT", attribCount : 1}
+    ,MAT4 : {id : "MAT4", bytes : 64, attribLocs: 4, attribType : "FLOAT", attribCount : 4}
+    ,COLOR3 : {id: "COLOR3", bytes : 3, attribLocs: 1}
+    ,COLOR4 :  {id: "COLOR3", bytes : 4, attribLocs: 1}
+    ,VEC2 : {id: "VEC2", bytes: 8, attribLocs: 1, attribType : "FLOAT", attribCount : 2}
+    ,VEC3 : {id: "VEC3", bytes: 12, attribLocs: 1, attribType : "FLOAT", attribCount : 3}
+    ,VEC4 :  {id: "VEC4", bytes : 16, attribLocs: 1, attribType : "FLOAT", attribCount : 4}
+    ,IVEC4 : {id: "IVEC4", bytes: 16, attribLocs: 1, attribType : "INT", attribCount : 4}
 }
 
 
