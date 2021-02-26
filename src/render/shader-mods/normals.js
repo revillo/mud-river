@@ -11,7 +11,7 @@ class ShaderModNormals extends ShaderMod
     addAttributes(sb)
     {
         sb.$(`
-ATTRIBUTE vec3 a_normal;
+ATTRIBUTE vec3 a_Normal;
         `)
     }
 
@@ -24,7 +24,7 @@ ATTRIBUTE vec3 a_normal;
     addVertexMain(sb)
     {
         sb.$(`
-        v_PerFragment.worldNormal = (worldMatrix * vec4(a_normal, 0.0)).xyz;
+        v_PerFragment.worldNormal = (worldMatrix * vec4(a_Normal, 0.0)).xyz;
         `);
     }
 

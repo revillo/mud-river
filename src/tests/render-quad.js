@@ -1,8 +1,9 @@
-import { ShaderStage, BufferType, BufferUsage } from '../render/gpu.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/types.js';
 import { Rasterizer } from '../render/rasterizer.js';
 import { GPUContextGL} from '../render/gpu.js'
 import { ShaderBuilder} from '../render/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
+import { DefaultAttributes } from '../render/attribute.js';
 
 var start = function()
 {        
@@ -14,11 +15,6 @@ var start = function()
 
     const gpu = new GPUContextGL(canvas);
     const renderer = new Rasterizer(gpu);
-
-    const attributeLocations = {
-        a_position : 0
-    };
-
     
     const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX);
     const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT);
@@ -29,7 +25,7 @@ var start = function()
     const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage)
     const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage)
 
-    const program = gpu.createProgram(vertShader, fragShader, attributeLocations);
+    const program = gpu.createProgram(vertShader, fragShader, DefaultAttributes);
 
     function makeQuadMesh()
     {
@@ -55,14 +51,14 @@ var start = function()
 
         const triVertexLayout = 
         {
-            a_position : 
+            a_Position : 
             {
                 buffer: vertBuffer,
-                location : attributeLocations.a_position,
+                location : DefaultAttributes.Position.location,
                 offset: 0,
                 stride: 12,
                 count: 3,
-                type : "FLOAT",
+                type : ShaderValueType.FLOAT,
                 isNormalized : false
             }
         };
@@ -84,7 +80,7 @@ var start = function()
             numInstances : 0,
             bindBuffers : function(gpu)
             {
-                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Model");
+                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Locals.model");
                 gpu.gl.uniformMatrix4fv(modelUniformLoc, false, worldTransform);
             }
         };
@@ -106,7 +102,7 @@ var start = function()
         ],
         bindBuffers : (gpu) =>
         {
-            var vploc = gpu.gl.getUniformLocation(program, "u_ViewProjection");
+            var vploc = gpu.gl.getUniformLocation(program, "u_Globals.viewProjection");
             gpu.gl.uniformMatrix4fv(vploc, false, camera.viewProjection);
         }
     };

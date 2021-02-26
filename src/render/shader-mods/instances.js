@@ -11,14 +11,14 @@ class ShaderModeInstances extends ShaderMod
     addAttributes(sb)
     {
         sb.$(`
-ATTRIBUTE mat4 a_instanceMatrix;
+ATTRIBUTE mat4 a_InstanceMatrix;
         `)
     }
 
     addVertexMain(sb)
     {
         sb.$(`
-        worldMatrix = worldMatrix * a_instanceMatrix;
+        worldMatrix = worldMatrix * a_InstanceMatrix;
         `);
     }
 

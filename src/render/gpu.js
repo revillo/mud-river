@@ -1,56 +1,3 @@
-/**
- * @typedef {Object} Platform
- * @property {number} glVersion - the version of webgl
- */
-
- /**
-  * @typedef {Object} AttributeLayout
-  * @property {GPUBuffer} buffer
-  * @property {number} location  
-  * @property {string} type - FLOAT, INT
-  * @property {number} count - count of elements per vertex, ie 3 for vec3
-  * @property {number} offset 
-  * @property {number} stride
-  * @property {bool} [isNormalized]
-*/
-
-/**
- * @readonly
- * @enum {string}
- */
-const ShaderStage = 
-{
-    VERTEX : "VERTEX_SHADER",
-    FRAGMENT : "FRAGMENT_SHADER"
-};
-
-
-/**
- * @readonly
- * @enum {string}
- */
-const BufferType =
-{
-    VERTEX : "ARRAY_BUFFER",
-    ATTRIBUTE : "ARRAY_BUFFER",
-    INDEX : "ELEMENT_ARRAY_BUFFER",
-    ELEMENT: "ELEMENT_ARRAY_BUFFER",
-    UNIFORM : "UNIFORM_BUFFER"
-};
-
-
-/**
- * @readonly
- * @enum {string}
- */
-const BufferUsage =
-{
-    STATIC : "STATIC_DRAW",
-    DYNAMIC : "DYNAMIC_DRAW"
-}
-
-export {ShaderStage, BufferType, BufferUsage}
-
  /**
   * @class
   */
@@ -110,10 +57,10 @@ export class GPUContextGL
     /**
     * @param {Shader} vertexShader - vertex shader 
     * @param {Shader} fragmentShader - fragment shader 
-    * @param {Object} attributeLocations - map of attribute name and location
+    * @param {Object} attributes - map of vertex attributes, usually DefaultAttributes
     * @return {Program} compiled GLProgram or null, call getErrorTag() for more information
     */
-   createProgram(vertexShader, fragmentShader, attributeLocations)
+   createProgram(vertexShader, fragmentShader, attributes)
     {
         const gl = this.gl;
 
@@ -122,9 +69,10 @@ export class GPUContextGL
         gl.attachShader(program, vertexShader);
         gl.attachShader(program, fragmentShader);
 
-        for (let attributeName in attributeLocations)
+        for (let attributeName in attributes)
         {
-            gl.bindAttribLocation(program, attributeLocations[attributeName], attributeName);
+            const attrib = attributes[attributeName];
+            gl.bindAttribLocation(program, attrib.location, attrib.id);
         }
 
         gl.linkProgram(program);
@@ -234,49 +182,6 @@ export class GPUContextGL
         //todo do something else for webgl1
     }
 
-
-    createInstanceBindingFunction(instanceBuffer, instanceLayout)
-    {
-        const gl = this.gl;
-
-        function doBinding()
-        {
-            gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer.glBuffer);
-
-            for (var attributeName in instanceLayout)
-            {
-                const attribute = instanceLayout[attributeName];
-
-                if (attribute.count == 16 && attribute.type == "FLOAT")
-                {
-                    const startLocation = attribute.location;
-
-                    for (let i = 0; i < 4; ++i) 
-                    {
-                        const loc = startLocation + i;
-
-                        gl.enableVertexAttribArray(loc);
-
-                        const offset = i * 16 + attribute.offset;  
-                        gl.vertexAttribPointer(
-                            loc,              
-                            4,                //vec4                
-                            gl.FLOAT, 
-                            false,            //normalized
-                            attribute.stride, 
-                            offset           
-                        );
-
-                        // this line says this attribute only changes for each 1 instance
-                        gl.vertexAttribDivisor(loc, 1);
-                    }
-                }
-            }
-        }
-
-        return doBinding;
-    }
-
     /**
      * 
      * @param {Map<string, AttributeLayout>} vertexLayout 
@@ -316,7 +221,7 @@ export class GPUContextGL
                 {
                     const loc = startLocation + i;
                     gl.enableVertexAttribArray(loc);
-
+                    
                     const offset = i * 16 + attribute.offset;  
                     gl.vertexAttribPointer(
                         loc,              
@@ -339,8 +244,19 @@ export class GPUContextGL
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
+        var indexType = gl.UNSIGNED_SHORT;
+
         if (indexLayout.buffer)
         {
+            if (indexType instanceof Uint16Array)
+            {
+                indexType = gl.UNSIGNED_SHORT;
+            }
+            else if (indexType instanceof Uint32Array)
+            {
+                indexType = gl.UNSIGNED_INT;
+            }
+
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexLayout.buffer.glBuffer);
         }
 
@@ -355,7 +271,7 @@ export class GPUContextGL
             isIndexed : !!indexLayout.buffer,
 
             //todo?
-            indexType : gl.UNSIGNED_SHORT,
+            indexType : indexType,
             mode : gl.TRIANGLES
         };
 
@@ -380,13 +296,13 @@ export class GPUContextGL
         console.error(tag, error);
     }
     
-    setViewport(x, y, w, h, cmd)
+    setViewport(x, y, w, h)
     {
         const gl = this.gl;
         gl.viewport(x, y, w, h);
     }
 
-    clear(color, cmd)
+    clear(color)
     {
         const gl = this.gl;
         gl.clearColor(color.r, color.g, color.b, color.a);
@@ -394,7 +310,7 @@ export class GPUContextGL
         gl.clearDepth(1);
     }
 
-    bindProgram(program, cmd)
+    bindProgram(program)
     {
         const gl = this.gl;
         gl.useProgram(program);
@@ -405,7 +321,7 @@ export class GPUContextGL
      * @param {GPUGeometryBinding} meshBinding 
      * @param {*} [cmd] 
      */
-    rasterizeMesh(geometryBinding, instanceCount, cmd)
+    rasterizeMesh(geometryBinding, instanceCount)
     {
         const gl = this.gl;
      

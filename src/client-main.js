@@ -1,4 +1,4 @@
-import { ShaderStage, BufferType, BufferUsage } from './render/gpu.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from './render/types.js';
 import { Rasterizer } from './render/rasterizer.js';
 import { GPUContextGL} from './render/gpu.js'
 import { ShaderBuilder} from './render/shader-builder.js'
@@ -6,6 +6,7 @@ import { mat4, vec3, quat, glMatrix } from './math/index.js'
 import { Sphere } from './shape/sphere.js'
 import { ShaderNormals } from './render/shader-mods/normals.js'
 import { ShaderInstances } from './render/shader-mods/instances.js'
+import { DefaultAttributes } from './render/attribute.js';
 
 var start = function()
 {        
@@ -18,24 +19,13 @@ var start = function()
     const gpu = new GPUContextGL(canvas);
     const renderer = new Rasterizer(gpu);
 
-    const attributeLocations = {
-        a_position : 0,
-        a_normal: 1
-        ,a_instanceMatrix : 2 // 3 // 4 // 5
-    };
-    
-
-    
     const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX, [ShaderInstances, ShaderNormals]);
     const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, [ShaderInstances, ShaderNormals]);
     
     console.log(vertBuilder.text);
     console.log(fragBuilder.text);
     
-    const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage)
-    const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage)
-
-    const program = gpu.createProgram(vertShader, fragShader, attributeLocations);
+    const program = gpu.createProgram(vertBuilder.create(gpu), fragBuilder.create(gpu), DefaultAttributes);
 
     function makeSphereMesh()
     {
@@ -65,40 +55,39 @@ var start = function()
         
         const sphereVertexLayout = 
         {
-            a_position : 
+            a_Position : 
             {
                 buffer : vertBuffer,
-                location : attributeLocations.a_position,
+                location : DefaultAttributes.Position.location,
                 offset: 0,
                 stride: 4 * 8,
                 count: 3,
-                type : "FLOAT",
+                type : ShaderValueType.FLOAT,
                 isNormalized : false
             },
 
-            a_normal : 
+            a_Normal : 
             {
                 buffer : vertBuffer,
-                location : attributeLocations.a_normal,
+                location : DefaultAttributes.Normal.location,
                 offset: 4 * 3,
                 stride: 4 * 8,
                 count: 3,
-                type : "FLOAT",
+                type : ShaderValueType.FLOAT,
                 isNormalized : false
             }
         };
-
         
         const instanceLayout = 
         {
-            a_instanceMatrix :
+            a_InstanceMatrix :
             {
                 buffer : instanceBuffer,
-                location : attributeLocations.a_instanceMatrix,
+                location : DefaultAttributes.InstanceMatrix.location,
                 offset: 0,
                 count : 1,
                 stride: bytesPerMatrix,
-                type : "MAT4",
+                type : ShaderValueType.MAT4,
                 isNormalized: false
             }
         }
@@ -112,9 +101,8 @@ var start = function()
 
         const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexLayout, instanceLayout);
         
-        //const bindInstances = gpu.createInstanceBindingFunction(instanceBuffer, instanceLayout);
-
         let worldTransform = mat4.create();
+        const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Locals.model");
 
         return {
             binding : sphereBinding,
@@ -123,7 +111,6 @@ var start = function()
 
             bindBuffers : (gpu) =>
             {
-                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Model");
                 gpu.gl.uniformMatrix4fv(modelUniformLoc, false, worldTransform);
             }
         };
@@ -178,7 +165,7 @@ var start = function()
     mat4.perspective(camera.projection, glMatrix.toRadian(60), canvas.width / canvas.height, 0.1, 100);
     mat4.lookAt(camera.view, vec3.fromValues(0,3,10), vec3.fromValues(0,3, 0.5), vec3.fromValues(0, 1, 0));
     mat4.multiply(camera.viewProjection, camera.projection, camera.view);
-
+    const vploc = gpu.gl.getUniformLocation(program, "u_Globals.viewProjection");
     
     const triRenderBin = {
         program : program,
@@ -187,7 +174,6 @@ var start = function()
         ],
         bindBuffers : (gpu) =>
         {
-            var vploc = gpu.gl.getUniformLocation(program, "u_ViewProjection");
             gpu.gl.uniformMatrix4fv(vploc, false, camera.viewProjection);
         }
     };

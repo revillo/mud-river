@@ -1,4 +1,4 @@
-import { ShaderStage, BufferType, BufferUsage } from '../render/gpu.js';
+import { ShaderStage, BufferType, BufferUsage } from '../render/types.js';
 import { Rasterizer } from '../render/rasterizer.js';
 import { GPUContextGL} from '../render/gpu.js'
 import { ShaderBuilder} from '../render/shader-builder.js'
@@ -6,6 +6,7 @@ import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { Sphere } from '../shape/sphere.js'
 import { ShaderNormals } from '../render/shader-mods/normals.js'
 import { ShaderInstances } from '../render/shader-mods/instances.js'
+import { DefaultAttributes } from '../render/attribute.js';
 
 var start = function()
 {        
@@ -18,14 +19,6 @@ var start = function()
     const gpu = new GPUContextGL(canvas);
     const renderer = new Rasterizer(gpu);
 
-    const attributeLocations = {
-        a_position : 0,
-        a_normal: 1
-        ,a_instanceMatrix : 2 // 3 // 4 // 5
-    };
-    
-
-    
     const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX, [ShaderInstances, ShaderNormals]);
     const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, [ShaderInstances, ShaderNormals]);
     
@@ -35,7 +28,7 @@ var start = function()
     const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage)
     const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage)
 
-    const program = gpu.createProgram(vertShader, fragShader, attributeLocations);
+    const program = gpu.createProgram(vertShader, fragShader, DefaultAttributes);
 
     function makeSphereMesh()
     {
@@ -65,10 +58,10 @@ var start = function()
         
         const sphereVertexLayout = 
         {
-            a_position : 
+            a_Position : 
             {
                 buffer : vertBuffer,
-                location : attributeLocations.a_position,
+                location : DefaultAttributes.Position.location,
                 offset: 0,
                 stride: 4 * 8,
                 count: 3,
@@ -76,10 +69,10 @@ var start = function()
                 isNormalized : false
             },
 
-            a_normal : 
+            a_Normal : 
             {
                 buffer : vertBuffer,
-                location : attributeLocations.a_normal,
+                location : DefaultAttributes.Normal.location,
                 offset: 4 * 3,
                 stride: 4 * 8,
                 count: 3,
@@ -91,10 +84,10 @@ var start = function()
         
         const instanceLayout = 
         {
-            a_instanceMatrix :
+            a_InstanceMatrix :
             {
                 buffer : instanceBuffer,
-                location : attributeLocations.a_instanceMatrix,
+                location : DefaultAttributes.InstanceMatrix.location,
                 offset: 0,
                 count : 1,
                 stride: bytesPerMatrix,
@@ -102,6 +95,7 @@ var start = function()
                 isNormalized: false
             }
         }
+
 
         const indexLayout =
         {
@@ -112,7 +106,6 @@ var start = function()
 
         const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexLayout, instanceLayout);
         
-        //const bindInstances = gpu.createInstanceBindingFunction(instanceBuffer, instanceLayout);
 
         let worldTransform = mat4.create();
 
@@ -123,7 +116,7 @@ var start = function()
 
             bindBuffers : (gpu) =>
             {
-                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Model");
+                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Locals.model");
                 gpu.gl.uniformMatrix4fv(modelUniformLoc, false, worldTransform);
             }
         };
@@ -150,7 +143,7 @@ var start = function()
         ],
         bindBuffers : (gpu) =>
         {
-            var vploc = gpu.gl.getUniformLocation(program, "u_ViewProjection");
+            var vploc = gpu.gl.getUniformLocation(program, "u_Globals.viewProjection");
             gpu.gl.uniformMatrix4fv(vploc, false, camera.viewProjection);
         }
     };
