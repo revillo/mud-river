@@ -2,7 +2,7 @@ import {ShaderStage} from "./gpu.js"
 
 
 /**
- * @class ShaderBuilder
+ * @class
  */
 export class ShaderBuilder
 {
@@ -16,7 +16,7 @@ export class ShaderBuilder
         this.platform = platform;
         this.stage = stage;
         this.lines = [];
-        this.modules = modules;
+        this.modules = modules || [];
     }
 
     addModule(module)
@@ -33,61 +33,99 @@ export class ShaderBuilder
     {
         this.stage = ShaderStage.FRAGMENT;
     }
+
+    $(str)
+    {
+        this.lines.push(str);
+    }
     
     _addUniforms()
     {
-        this.lines.push("UNIFORM mat4 u_ViewProjection;");
-        this.lines.push("UNIFORM mat4 u_Model;");
+        this.$("UNIFORM mat4 u_ViewProjection;");
+        this.$("UNIFORM mat4 u_Model;");
+
+        this.modules.forEach(mod => {
+            mod.addUniforms(this)
+        });
+    }
+
+    _addVaryings()
+    {
+        
+this.$(`
+struct PerFragment
+{
+    vec3 worldPosition;`);
+
+this.modules.forEach(mod => {
+    mod.addPerFragment(this);
+});
+
+this.$(`
+};
+VARYING PerFragment v_PerFragment;`);
+
     }
 
     _buildVert()
     {
-        this.lines.push(`
-VERT_IN vec3 a_position;
-VERT_OUT vec3 v_position;`);
+this.$(`
+ATTRIBUTE vec3 a_position;`);
 
-        this.lines.push(`
+this.modules.forEach(mod => {
+    mod.addAttributes(this);
+    mod.addVertexFunctions(this);
+});
+
+        this.$(`
 void main()
 {
-    //gl_Position = vec4(a_position,1.0);
-    vec4 worldPos = u_Model * vec4(a_position, 1.0);
-    v_position = worldPos.xyz;
-    gl_Position = u_ViewProjection * worldPos;
+    mat4 worldMatrix = u_Model;
+    `);
+
+    this.modules.forEach(mod => {
+        mod.addVertexMain(this)
+    });
+
+this.$(`
+    vec4 worldPosition = worldMatrix * vec4(a_position, 1.0);
+    v_PerFragment.worldPosition = worldPosition.xyz;
+    gl_Position = u_ViewProjection * worldPosition;
 }`);
 
     }
 
     _buildFrag()
     {
-        this.lines.push("FRAG_IN vec3 v_position;");
-
         if (this.platform.glVersion == 2)
         {
             this.lines.push("FRAG_OUT vec4 outColor;");
         }
 
+        this.modules.forEach(mod => {
+            mod.addFragmentFunctions(this);
+        });
+
         this.lines.push(`
 void main()
 {
-    lowp vec4 finalColor = vec4(0.0, 1.0, 1.0, 1.0);
-    vec3 xdiff = dFdx(v_position);
-    vec3 Ydiff = dFdy(v_position);
-    vec3 normal=-normalize(cross(xdiff,Ydiff));
-    finalColor.rgb = vec3(0.0, 1.0, 1.0) * (dot(normal, vec3(0.0, 1.0, 0.0)) * 0.5 + 0.5);
-    //finalColor.rgb = vec3(0.0, 1.0, 1.0);
+    lowp vec4 finalColor = vec4(mod(v_PerFragment.worldPosition, vec3(1.0)), 1.0);`);
 
-        `);
+        this.modules.forEach(mod => {
+            mod.addFragmentMain(this);
+        });
 
         if (this.platform.glVersion == 2)
         {
-            this.lines.push('outColor = finalColor;');
+            this.lines.push(`outColor = finalColor;
+}`);
         }
         else
         {
-            this.lines.push('gl_FragColor = finalColor;');
+            this.lines.push(`gl_FragColor = finalColor;
+}`);
         }
 
-        this.lines.push("}");
     }
 
     build()
@@ -97,23 +135,28 @@ void main()
         if (this.platform.glVersion == 2)
         {
             this.lines.push("#version 300 es");
-            this.lines.push("#define VERT_IN in");
-            this.lines.push("#define VERT_OUT out");
-            this.lines.push("#define FRAG_IN in");
-            this.lines.push("#define FRAG_OUT out");
             this.lines.push("#define UNIFORM uniform");
+
+            if (this.stage == ShaderStage.VERTEX)
+            {
+                this.lines.push("#define ATTRIBUTE in");
+                this.lines.push("#define VARYING out");
+            }
+            else
+            {
+                this.lines.push("#define VARYING in");
+                this.lines.push("#define FRAG_OUT out");
+            }
         }
         else
         {
-            this.lines.push("#define VERT_IN attribute");
-            this.lines.push("#define VERT_OUT varying");
-            this.lines.push("#define UNIFORM uniform");
-            this.lines.push("#define FRAG_IN varying");
+            /* TODO WEBGL1
+            */
         }
-
         this.lines.push("precision highp float;")
 
         this._addUniforms();
+        this._addVaryings();
 
         if (this.stage == ShaderStage.VERTEX)
         {

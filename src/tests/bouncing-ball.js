@@ -1,11 +1,10 @@
-import { ShaderStage, BufferType, BufferUsage } from './render/gpu.js';
-import { Rasterizer } from './render/rasterizer.js';
-import { GPUContextGL} from './render/gpu.js'
-import { ShaderBuilder} from './render/shader-builder.js'
-import { mat4, vec3, quat, glMatrix } from './math/index.js'
-import { Sphere } from './shape/sphere.js'
-import { ShaderNormals } from './render/shader-mods/normals.js'
-import { ShaderInstances } from './render/shader-mods/instances.js'
+import { ShaderStage, BufferType, BufferUsage } from '../render/gpu.js';
+import { Rasterizer } from '../render/rasterizer.js';
+import { GPUContextGL} from '../render/gpu.js'
+import { ShaderBuilder} from '../render/shader-builder.js'
+import { mat4, vec3, quat, glMatrix } from '../math/index.js'
+import { Sphere } from '../shape/sphere.js'
+import { ShaderNormals } from '../render/shader-mods/normals.js'
 
 var start = function()
 {        
@@ -21,14 +20,12 @@ var start = function()
     const attributeLocations = {
         a_position : 0,
         a_normal: 1
-        ,a_instanceMatrix : 2 // 3 // 4 // 5
     };
-    
 
     
-    const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX, [ShaderInstances, ShaderNormals]);
-    const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, [ShaderInstances, ShaderNormals]);
-    
+    const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX, [ShaderNormals]);
+    const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, [ShaderNormals]);
+
     console.log(vertBuilder.text);
     console.log(fragBuilder.text);
     
@@ -45,29 +42,16 @@ var start = function()
 
         const vertBuffer = gpu.createBuffer(BufferType.VERTEX);
         const indexBuffer = gpu.createBuffer(BufferType.INDEX);
-
+        
+      
         gpu.uploadArrayBuffer(vertBuffer, sphereGeometry.vertices);
         gpu.uploadArrayBuffer(indexBuffer, sphereGeometry.indices);
-        
-        const instanceCount = 2;
-        const floatsPerMatrix = 16;
-        const bytesPerMatrix = 4 * floatsPerMatrix;
-        const instances = new Float32Array(floatsPerMatrix * instanceCount);
-        const instanceBuffer = gpu.createBuffer(BufferType.VERTEX, BufferUsage.STATIC);
-
-        const m1 = new Float32Array(instances.buffer, 0, floatsPerMatrix);
-        const m2 = new Float32Array(instances.buffer, bytesPerMatrix, floatsPerMatrix);
-        
-        mat4.fromTranslation(m2, [2,0,0]);
-        mat4.identity(m1);
-        
-        gpu.uploadArrayBuffer(instanceBuffer, instances);
-        
+       
         const sphereVertexLayout = 
         {
             a_position : 
             {
-                buffer : vertBuffer,
+                buffer: vertBuffer,
                 location : attributeLocations.a_position,
                 offset: 0,
                 stride: 4 * 8,
@@ -78,7 +62,7 @@ var start = function()
 
             a_normal : 
             {
-                buffer : vertBuffer,
+                buffer: vertBuffer,
                 location : attributeLocations.a_normal,
                 offset: 4 * 3,
                 stride: 4 * 8,
@@ -88,38 +72,21 @@ var start = function()
             }
         };
 
-        
-        const instanceLayout = 
+        const indexLayout = 
         {
-            a_instanceMatrix :
-            {
-                buffer : instanceBuffer,
-                location : attributeLocations.a_instanceMatrix,
-                offset: 0,
-                count : 1,
-                stride: bytesPerMatrix,
-                type : "MAT4",
-                isNormalized: false
-            }
-        }
-
-        const indexLayout =
-        {
+            buffer : indexBuffer,
             count : sphereGeometry.count,
-            start : 0,
-            buffer: indexBuffer
+            start : 0
         }
-
-        const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexLayout, instanceLayout);
         
-        //const bindInstances = gpu.createInstanceBindingFunction(instanceBuffer, instanceLayout);
+
+        const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexLayout);
 
         let worldTransform = mat4.create();
 
         return {
             binding : sphereBinding,
             worldTransform : worldTransform,
-            numInstances : instanceCount,
 
             bindBuffers : (gpu) =>
             {

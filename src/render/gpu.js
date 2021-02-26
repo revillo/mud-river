@@ -4,21 +4,31 @@
  */
 
  /**
-  * @typedef {AttributeLayout}
+  * @typedef {Object} AttributeLayout
+  * @property {GPUBuffer} buffer
   * @property {number} location  
   * @property {string} type - FLOAT, INT
   * @property {number} count - count of elements per vertex, ie 3 for vec3
   * @property {number} offset 
   * @property {number} stride
   * @property {bool} [isNormalized]
-  */
+*/
 
+/**
+ * @readonly
+ * @enum {string}
+ */
 const ShaderStage = 
 {
     VERTEX : "VERTEX_SHADER",
     FRAGMENT : "FRAGMENT_SHADER"
 };
 
+
+/**
+ * @readonly
+ * @enum {string}
+ */
 const BufferType =
 {
     VERTEX : "ARRAY_BUFFER",
@@ -28,6 +38,11 @@ const BufferType =
     UNIFORM : "UNIFORM_BUFFER"
 };
 
+
+/**
+ * @readonly
+ * @enum {string}
+ */
 const BufferUsage =
 {
     STATIC : "STATIC_DRAW",
@@ -37,8 +52,7 @@ const BufferUsage =
 export {ShaderStage, BufferType, BufferUsage}
 
  /**
-  * @class GPUContextGL
-  * @member {Platform} platform
+  * @class
   */
 export class GPUContextGL
 {
@@ -51,7 +65,11 @@ export class GPUContextGL
         var canvasOpts = {antialias : true};
 
         this.gl = canvas.getContext("webgl2", canvasOpts);
+
+        /** @member {Platform} */
         this.platform = {};
+        
+        /** @member {HTMLCanvas} */
         this.canvas = canvas;
 
         if (this.gl)
@@ -68,7 +86,17 @@ export class GPUContextGL
         {
             this._reportError("Unsupported Browser", "Your browser is not supported. Please enable webgl or webgl2");
         }
+        else
+        {
+            this.initGL();
+        }
+    }
 
+    initGL()
+    {
+        const gl = this.gl;
+
+        gl.enable(gl.DEPTH_TEST);
     }
 
     /**
@@ -138,10 +166,8 @@ export class GPUContextGL
     deleteShader(shader)
     {
         const gl = this.gl;
-
         gl.deleteShader(shader);
     }
-
     
     /**
      * 
@@ -209,43 +235,127 @@ export class GPUContextGL
     }
 
 
+    createInstanceBindingFunction(instanceBuffer, instanceLayout)
+    {
+        const gl = this.gl;
+
+        function doBinding()
+        {
+            gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffer.glBuffer);
+
+            for (var attributeName in instanceLayout)
+            {
+                const attribute = instanceLayout[attributeName];
+
+                if (attribute.count == 16 && attribute.type == "FLOAT")
+                {
+                    const startLocation = attribute.location;
+
+                    for (let i = 0; i < 4; ++i) 
+                    {
+                        const loc = startLocation + i;
+
+                        gl.enableVertexAttribArray(loc);
+
+                        const offset = i * 16 + attribute.offset;  
+                        gl.vertexAttribPointer(
+                            loc,              
+                            4,                //vec4                
+                            gl.FLOAT, 
+                            false,            //normalized
+                            attribute.stride, 
+                            offset           
+                        );
+
+                        // this line says this attribute only changes for each 1 instance
+                        gl.vertexAttribDivisor(loc, 1);
+                    }
+                }
+            }
+        }
+
+        return doBinding;
+    }
+
     /**
      * 
-     * @param {GPUBuffer} vertexBuffer 
      * @param {Map<string, AttributeLayout>} vertexLayout 
      * @param {number} indexCount
      * @param {GPUBuffer} [indexBuffer] 
      * @param {number} [startIndex]
      * @return {GPUGeometryBinding}
      */
-    createGeometryBinding(vertexBuffer, vertexLayout, indexCount, indexBuffer, startIndex)
+    createGeometryBinding(vertexLayout, indexLayout, instanceLayout)
     {
         const gl = this.gl;
         const vao = gl.createVertexArray();
         
         gl.bindVertexArray(vao);
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer.glBuffer);
-
-        for (var attributeName in vertexLayout)
+        for (let attributeName in vertexLayout)
         {
+            /**
+             * @type {AttributeLayout}
+             */
             const attribute = vertexLayout[attributeName];
+            gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
             gl.enableVertexAttribArray(attribute.location);
             gl.vertexAttribPointer(attribute.location, attribute.count, gl[attribute.type], attribute.isNormalized, attribute.stride, attribute.offset);
         }
  
+        for (let attributeName in (instanceLayout || []))
+        {
+            const attribute = instanceLayout[attributeName];
+            gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
+
+            if (attribute.type == "MAT4" && attribute.count == 1)
+            {
+                const startLocation = attribute.location;
+
+                for (let i = 0; i < 4; ++i) 
+                {
+                    const loc = startLocation + i;
+                    gl.enableVertexAttribArray(loc);
+
+                    const offset = i * 16 + attribute.offset;  
+                    gl.vertexAttribPointer(
+                        loc,              
+                        4,                //vec4                
+                        gl.FLOAT, 
+                        false,            //normalized
+                        attribute.stride, 
+                        offset           
+                    );
+
+                    // this line says this attribute only changes for each 1 instance
+                    gl.vertexAttribDivisor(loc, 1);
+                }
+            }
+            else
+            {
+                this._reportError("Bad Attribute", attribute.count + " " + attribute.type);
+            }
+        }
+
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer ? indexBuffer.glBuffer : 0);
+
+        if (indexLayout.buffer)
+        {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexLayout.buffer.glBuffer);
+        }
+
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
         return {
             glVAO : vao,
-            startIndex : startIndex || 0,
-            indexCount : indexCount,
-            isIndexed : !!indexBuffer,
+            startIndex : indexLayout.start || 0,
+            indexCount : indexLayout.count,
+            isIndexed : !!indexLayout.buffer,
+
             //todo?
+            indexType : gl.UNSIGNED_SHORT,
             mode : gl.TRIANGLES
         };
 
@@ -295,18 +405,35 @@ export class GPUContextGL
      * @param {GPUGeometryBinding} meshBinding 
      * @param {*} [cmd] 
      */
-    rasterizeMesh(geometryBinding, cmd)
+    rasterizeMesh(geometryBinding, instanceCount, cmd)
     {
         const gl = this.gl;
+     
         gl.bindVertexArray(geometryBinding.glVAO);
+        gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
+
         if (geometryBinding.isIndexed)
         {
-            //todo integer types
-            gl.drawElements(geometryBinding.mode, geometryBinding.indexCount,  gl.UNSIGNED_SHORT, geometryBinding.startIndex);
+            if (instanceCount)
+            {
+                gl.drawElementsInstanced(geometryBinding.mode, geometryBinding.indexCount, geometryBinding.indexType, geometryBinding.startIndex, instanceCount);
+            }
+            else
+            {
+                //todo integer types
+                gl.drawElements(geometryBinding.mode, geometryBinding.indexCount, gl.UNSIGNED_SHORT, geometryBinding.startIndex);
+            }
         }
         else
         {
-            gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
+            if (instanceCount)
+            {
+                gl.drawArraysInstanced(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount, instanceCount);
+            }
+            else
+            {
+                gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
+            }
         }
         gl.bindVertexArray(null);
     }

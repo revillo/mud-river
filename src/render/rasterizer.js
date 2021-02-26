@@ -1,7 +1,7 @@
 //import { GPUContextGL } from "./gpu.js";
 
 /**
- * @class Rasterizer
+ * @class
  * */
 export class Rasterizer
 {
@@ -13,7 +13,7 @@ export class Rasterizer
     {
         this.canvas = gpu.canvas;
         this.gpu = gpu;
-        
+
         if (gpu.getErrorTag())
         {
             console.error("Failed to initialize rasterizer");
@@ -27,17 +27,17 @@ export class Rasterizer
         scene.renderBins.forEach(function(renderBin) {
             gpu.bindProgram(renderBin.program);
 
-            if (renderBin.bindUniforms){
-                renderBin.bindUniforms(gpu);
+            if (renderBin.bindBuffers){
+                renderBin.bindBuffers(gpu);
             }
 
             renderBin.meshes.forEach(function(mesh)
             {
-                if (mesh.bindUniforms) {
-                    mesh.bindUniforms(gpu);
+                if (mesh.bindBuffers) {
+                    mesh.bindBuffers(gpu);
                 }
 
-                gpu.rasterizeMesh(mesh.binding);
+                gpu.rasterizeMesh(mesh.binding, mesh.numInstances);
             });
         });
 
@@ -53,7 +53,6 @@ export class Rasterizer
     rasterizeScenes(scenes)
     {
         const thiz = this;
-
 
         scenes.forEach(function(scene) {
             thiz.rasterizeScene(scene);
