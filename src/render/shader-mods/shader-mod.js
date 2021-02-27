@@ -1,43 +1,14 @@
+import { merge } from "../../util/fuse.js";
+
 export class ShaderMod
 {
-    addDeclares()
+    constructor (mod)
     {
-
+        this.mod = mod;
     }
 
-    addPerFragment()
+    apply(builder)
     {
-
+        merge(builder, this.mod);
     }
-
-    addUniforms()
-    {
-
-    }
-
-    addAttributes()
-    {
-
-    }
-
-    addVertexMain()
-    {
-
-    }
-
-    addVertexFunctions()
-    {
-
-    }
-
-    addFragmentFunctions()
-    {
-
-    }
-
-    addFragmentMain()
-    {
-
-    }
-
 }

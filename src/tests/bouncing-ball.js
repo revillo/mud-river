@@ -1,11 +1,13 @@
 import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
 import { Rasterizer } from '../render/rasterizer.js';
-import { GPUContextGL} from '../render/gpu.js'
-import { ShaderBuilder} from '../render/shader-builder.js'
+import { GPUContext} from '../render/gpu.js'
+import { RasterShaderBuilder} from '../render/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { Sphere } from '../shape/sphere.js'
 import { ShaderNormals } from '../render/shader-mods/normals.js'
 import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
+import { RasterProgram } from '../render/program.js';
+import { UniformBlockBuffer, BufferManager } from '../render/buffer.js';
 
 var start = function()
 {        
@@ -15,19 +17,10 @@ var start = function()
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const gpu = new GPUContextGL(canvas);
+    const gpu = new GPUContext(canvas);
     const renderer = new Rasterizer(gpu);
-
-    const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX, [ShaderNormals]);
-    const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, [ShaderNormals]);
-
-    console.log(vertBuilder.text);
-    console.log(fragBuilder.text);
-    
-    const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage)
-    const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage)
-
-    const program = gpu.createProgram(vertShader, fragShader, DefaultAttributes);
+    const program = new RasterProgram(gpu, DefaultAttributes, [ShaderNormals]);
+    const bufferManager = new BufferManager(gpu);
 
     function makeSphereMesh()
     {
@@ -35,37 +28,25 @@ var start = function()
 
         const sphereGeometry = sphere.createGeometry();
 
-        const vertBuffer = gpu.createBuffer(BufferType.VERTEX);
-        const indexBuffer = gpu.createBuffer(BufferType.INDEX);
-        
-      
-        gpu.uploadArrayBuffer(vertBuffer, sphereGeometry.vertices);
-        gpu.uploadArrayBuffer(indexBuffer, sphereGeometry.indices);
-       
-               
+        const vertBufferView = bufferManager.allocVertexBufferView(sphereGeometry.vertices);
+        const indexBufferView = bufferManager.allocIndexBufferView(sphereGeometry.indices);
+
         var attrGen = new AttributeLayoutGenerator([DefaultAttributes.Position, DefaultAttributes.Normal, DefaultAttributes.UV0]); 
-        const sphereVertexLayout = attrGen.generateAttributeLayout(vertBuffer, 0);
+        const sphereVertexLayout = attrGen.generateAttributeLayout(vertBufferView);
+    
+        const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexBufferView);
 
-        const indexLayout = 
-        {
-            buffer : indexBuffer,
-            count : sphereGeometry.count,
-            start : 0
-        }
-        
-
-        const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexLayout);
-
-        let worldTransform = mat4.create();
+        const localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
+        const myBlock = localsBuffer.getBlock(0);
+        mat4.identity(myBlock.model);
 
         return {
             binding : sphereBinding,
-            worldTransform : worldTransform,
-
-            bindBuffers : (gpu) =>
+            numInstances : 0,
+            worldTransform : myBlock.model,
+            bindBuffers : function(gpu, renderBin)
             {
-                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Locals.model");
-                gpu.gl.uniformMatrix4fv(modelUniformLoc, false, worldTransform);
+                localsBuffer.bindUniformBlock(0, renderBin.program)
             }
         };
     }
@@ -112,30 +93,29 @@ var start = function()
 
     const camera = {
         projection : mat4.create(),
-        view : mat4.create(),
-        viewProjection : mat4.create()
+        view : mat4.create()
     };
 
     mat4.perspective(camera.projection, glMatrix.toRadian(60), canvas.width / canvas.height, 0.1, 100);
     mat4.lookAt(camera.view, vec3.fromValues(0,3,10), vec3.fromValues(0,3, 0.5), vec3.fromValues(0, 1, 0));
-    mat4.multiply(camera.viewProjection, camera.projection, camera.view);
 
+    const globalsBuffer = bufferManager.allocUniformBlockBuffer("Globals", 1, program.uniformBlocks.Globals);
+    const globalBlock = globalsBuffer.getBlock(0);
+    mat4.multiply(globalBlock.viewProjection, camera.projection, camera.view);
     
     const triRenderBin = {
         program : program,
         meshes : [
             triangleMesh
         ],
-        bindBuffers : (gpu) =>
+        globalBlock : globalBlock,
+        bindBuffers : function(gpu)
         {
-            var vploc = gpu.gl.getUniformLocation(program, "u_Globals.viewProjection");
-            gpu.gl.uniformMatrix4fv(vploc, false, camera.viewProjection);
+            globalsBuffer.bindUniformBlock(0, this.program);
         }
     };
 
-
     const scene = {
-        camera : camera,
         renderBins : [triRenderBin]
     };
     
@@ -159,7 +139,7 @@ var start = function()
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         mat4.perspective(camera.projection, glMatrix.toRadian(60), canvas.width / canvas.height, 0.1, 100);
-        mat4.multiply(camera.viewProjection, camera.projection, camera.view);
+        mat4.multiply(globalBlock.viewProjection, camera.projection, camera.view);
     }
 
     window.physWorld = physWorld;

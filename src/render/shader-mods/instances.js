@@ -1,29 +1,21 @@
+import { ShaderValueType } from "../gpu-types.js";
 import {ShaderMod} from "./shader-mod.js"
 
-class ShaderModeInstances extends ShaderMod
-{
-    addDeclares(sb)
-    {
-        sb.$(`
-#define HAS_INSTANCES 1`);
-    }
+const mod = {
+    defines : {
+        HAS_INSTANCES : 1
+    },
 
-    addAttributes(sb)
-    {
-        sb.$(`
-ATTRIBUTE mat4 a_InstanceMatrix;
-        `)
-    }
+    instanceAttributes : {
+        InstanceMatrix : ShaderValueType.MAT4
+    },
 
-    addVertexMain(sb)
-    {
-        sb.$(`
-        worldMatrix = worldMatrix * a_InstanceMatrix;
-        `);
-    }
+    vertexMain : [`
+    worldMatrix = worldMatrix * a_InstanceMatrix;
+    `],
+};
 
-}
 
-const ShaderInstances = new ShaderModeInstances();
+const ShaderInstances = new ShaderMod(mod);
 
 export { ShaderInstances }

@@ -3,7 +3,7 @@ import {ShaderStage, ShaderValueType} from "./gpu-types.js"
 /**
  * @class
  */
-export class ShaderBuilder
+export class RasterShaderBuilder
 {
     /**
     * @param {Platform} platform - gl platform info (gl.getPlatform())
@@ -16,6 +16,10 @@ export class ShaderBuilder
         this.stage = stage;
         this.lines = [];
         this.modules = modules || [];
+        
+        this.defines = {};
+        this.varyings = {};
+        
         this.uniformBlocks = 
         {
             Globals : {
@@ -26,6 +30,44 @@ export class ShaderBuilder
                 model : ShaderValueType.MAT4
             }
         }
+
+        this.vertexAttributes = 
+        {
+            Position : ShaderValueType.VEC3
+        }
+
+        this.instanceAttributes = {};
+
+        this.varyingBlocks =
+        {
+            PerFragment: {
+                worldPosition : ShaderValueType.VEC3
+            }
+        };
+
+        this.fragmentMain = [
+            "    lowp vec4 finalColor = vec4(mod(v_PerFragment.worldPosition, vec3(1.0)), 1.0);"
+        ];
+
+        this.vertexMain = [
+            "    mat4 worldMatrix = u_Locals.model;"
+        ];
+
+        this.fragmentFunctions = [];
+
+        this.vertexFunctions = [];
+
+        this.defines = 
+        {
+            FLOAT : "float",
+            VEC2 : "vec2",
+            VEC3 : "vec3",
+            VEC4 : "vec4",
+            MAT4 : "mat4",
+            COLOR3 : "lowp vec3",
+            COLOR4 : "lowp vec4"
+        }
+
     }
 
     addModule(module)
@@ -33,31 +75,18 @@ export class ShaderBuilder
         this.modules.push(module);
     }
 
-    setStageVertex()
-    {
-        this.stage = ShaderStage.VERTEX;
-    }
-
-    setStageFragment()
-    {
-        this.stage = ShaderStage.FRAGMENT;
-    }
-
     $(str)
     {
         this.lines.push(str);
     }
-    
-    _addUniforms()
-    {
-        this.modules.forEach(mod => {
-            mod.addUniforms(this);
-        });
 
-        for (let blockName in this.uniformBlocks)
+
+    _writeBlocks(blocks, typeName, prefix)
+    {   
+        for (let blockName in blocks)
         {
-            this.$("struct " + blockName + "{");
-            const block = this.uniformBlocks[blockName];
+            this.$("\nstruct " + blockName + "{");
+            const block = blocks[blockName];
 
             for (let propertyName in block)
             {
@@ -66,49 +95,59 @@ export class ShaderBuilder
                 this.$(typeInfo.id + " " + propertyName + ";");
             }
 
-            this.$("};\n" + "UNIFORM " + blockName +  " u_" + blockName + ";");
+            this.$("};\n" + typeName + blockName +  prefix + blockName + ";\n");
+        }
+    }
+    
+    _writeUniforms()
+    {
+        this._writeBlocks(this.uniformBlocks, "UNIFORM ", " u_");
+    }
+
+    _writeVaryings()
+    {
+        this._writeBlocks(this.varyingBlocks, "VARYING ", " v_");
+    }
+
+    _writeAttributes()
+    {        
+        for (let propertyName in this.vertexAttributes)
+        {
+            let typeInfo = this.vertexAttributes[propertyName];
+
+            this.$("ATTRIBUTE " + typeInfo.id + " a_" + propertyName + ";");
+        }
+
+        for (let propertyName in this.instanceAttributes)
+        {
+            let typeInfo = this.instanceAttributes[propertyName];
+
+            this.$("ATTRIBUTE " + typeInfo.id + " a_" + propertyName + ";");
         }
     }
 
-    _addVaryings()
+    _writeDefines()
     {
-        
-this.$(`
-struct PerFragment
-{
-    vec3 worldPosition;`);
-
-this.modules.forEach(mod => {
-    mod.addPerFragment(this);
-});
-
-this.$(`
-};
-VARYING PerFragment v_PerFragment;`);
-
+        for (let propertyName in this.defines)
+        {
+            this.$("#define " + propertyName + " " + this.defines[propertyName]);
+        }
     }
 
     _buildVert()
     {
-this.$(`
-ATTRIBUTE vec3 a_Position;`);
+        this._writeAttributes();
 
-this.modules.forEach(mod => {
-    mod.addAttributes(this);
-    mod.addVertexFunctions(this);
-});
+        this.lines.push(...this.vertexFunctions);
 
         this.$(`
 void main()
 {
-    mat4 worldMatrix = u_Locals.model;
     `);
 
-    this.modules.forEach(mod => {
-        mod.addVertexMain(this)
-    });
+        this.lines.push(...this.vertexMain);
 
-this.$(`
+        this.$(`
     vec4 worldPosition = worldMatrix * vec4(a_Position, 1.0);
     v_PerFragment.worldPosition = worldPosition.xyz;
     gl_Position = u_Globals.viewProjection * worldPosition;
@@ -123,49 +162,35 @@ this.$(`
             this.lines.push("FRAG_OUT vec4 outColor;");
         }
 
-        this.modules.forEach(mod => {
-            mod.addFragmentFunctions(this);
-        });
+        this.lines.push(...this.fragmentFunctions);
 
-        this.lines.push(`
-void main()
-{
-    lowp vec4 finalColor = vec4(mod(v_PerFragment.worldPosition, vec3(1.0)), 1.0);`);
+        this.lines.push(`\nvoid main(){\n`);
 
-        this.modules.forEach(mod => {
-            mod.addFragmentMain(this);
-        });
+        this.lines.push(...this.fragmentMain);
 
         if (this.platform.glVersion == 2)
         {
-            this.lines.push(`outColor = finalColor;
-}`);
+            this.lines.push(`outColor = finalColor;\n}`);
         }
         else
         {
-            this.lines.push(`gl_FragColor = finalColor;
-}`);
+            this.lines.push(`gl_FragColor = finalColor;\n}`);
         }
-
     }
 
     build()
     {
+
+        this.modules.forEach((mod) => {
+            mod.apply(this);
+        });
+
         this.lines = [];
 
         if (this.platform.glVersion == 2)
         {
             this.$("#version 300 es");
             this.$("#define UNIFORM uniform");
-            this.$(`
-                #define FLOAT float
-                #define VEC2 vec2
-                #define VEC3 vec3
-                #define VEC4 vec4
-                #define MAT4 mat4
-                #define COLOR3 lowp vec3
-                #define COLOR4 lowp vec4
-            `);
 
             if (this.stage == ShaderStage.VERTEX)
             {
@@ -185,8 +210,9 @@ void main()
         }
         this.$("precision highp float;")
 
-        this._addUniforms();
-        this._addVaryings();
+        this._writeDefines();
+        this._writeUniforms();
+        this._writeVaryings();
 
         if (this.stage == ShaderStage.VERTEX)
         {
@@ -208,11 +234,5 @@ void main()
         }
 
         return this._text;
-    }
-    
-
-    create(gpu)
-    {
-        return gpu.createShader(this.text, this.stage);
     }
 }

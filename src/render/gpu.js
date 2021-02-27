@@ -1,9 +1,14 @@
+ /**
+ * @typedef {import("./gpu-types").ShaderValueTypeInfo} ShaderValueTypeInfo
+ */
+
 import { ShaderValueType } from "./gpu-types.js";
 
- /**
+
+/**
   * @class
   */
-export class GPUContextGL
+export class GPUContext
 {
     /**
      * 
@@ -39,6 +44,8 @@ export class GPUContextGL
         {
             this.initGL();
         }
+
+        this._makeBindFuncs();
     }
 
     initGL()
@@ -60,7 +67,7 @@ export class GPUContextGL
     * @param {Shader} vertexShader - vertex shader 
     * @param {Shader} fragmentShader - fragment shader 
     * @param {Object} attributes - map of vertex attributes, usually DefaultAttributes
-    * @return {Program} compiled GLProgram or null, call getErrorTag() for more information
+    * @return {GLProgram} compiled GLProgram or null, call getErrorTag() for more information
     */
    createProgram(vertexShader, fragmentShader, attributes)
     {
@@ -123,26 +130,33 @@ export class GPUContextGL
      * 
      * @param {string} type - one of BufferType.VERTEX, BufferType.INDEX, BufferType.UNIFORM 
      * @param {string} [usage] - must specify is size is specified
-     * @param {number} [size]
-     * @return {GPUBuffer}
+     * @param {number} [size] - size in bytes
+     * @return {import("./gpu-types.js").GPUBuffer}
      */
     createBuffer(type, usage, size)
     {
         const gl = this.gl;
         usage = usage || "STATIC_DRAW";
-        const buffer = gl.createBuffer();
-        var inited = false;
+        usage = gl[usage];
+        let target = gl[type];
+        let inited = false;
 
+        const buffer = gl.createBuffer();
+        
         if (size)
         {
-            gl.bufferData(gl[type], size, gl[usage]);
+            gl.bindBuffer(target, buffer);
+            gl.bufferData(target, size, usage);
+            gl.bindBuffer(target, null);
+            
+            gl.bindBuffer
             inited = true;
         }
 
         return {
             glBuffer : buffer,
-            target : gl[type],
-            usage : gl[usage],
+            target : target,
+            usage : usage,
             inited: inited,
             size : size
         }
@@ -156,33 +170,33 @@ export class GPUContextGL
     /**
      * 
      * @param {GPUBuffer} gpuBuffer 
-     * @param {ArrayBuffer} arrayBuffer 
+     * @param {ArrayBufferView} arrayBuffer 
      * @param {number} [dstOffset]
-     * @param {number} [srcOffset]
-     * @param {number} [length]
      */
-    uploadArrayBuffer(gpuBuffer, arrayBuffer, dstOffset, srcOffset, length)
+    uploadArrayBuffer(gpuBuffer, arrayBuffer, dstOffset)
     {
         dstOffset = dstOffset || 0;
-        srcOffset = srcOffset || 0;
 
         const gl = this.gl;
         const target = gpuBuffer.target;
         gl.bindBuffer(target, gpuBuffer.glBuffer);
         if (gpuBuffer.inited)
         {
-            gl.bufferSubData(target, dstOffset, arrayBuffer, srcOffset, length);
+            gl.bufferSubData(target, dstOffset, arrayBuffer, 0);
         }
         else
         {
-            gl.bufferData(target, arrayBuffer, gpuBuffer.usage, srcOffset, length);
+            if (dstOffset > 0)
+            {
+                this._reportError("Bad Allocation", "Dest offset must be zero when filling empty buffer");
+            }
+
+            gl.bufferData(target, arrayBuffer, gpuBuffer.usage, 0);
             gpuBuffer.inited = true;
             gpuBuffer.size = arrayBuffer.buffer.byteLength;
         }
 
         gl.bindBuffer(target, null);
-
-        //todo do something else for webgl1
     }
 
     /**
@@ -207,17 +221,25 @@ export class GPUContextGL
             const attribute = attributeLayout[attributeName];
             gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
             let offset = attribute.offset;
+            const type = attribute.type;
 
-            for (let i = 0; i < attribute.type.attribLocs; i++)
+            for (let i = 0; i < type.attribLocs; i++)
             {
                 const loc = attribute.location + i;
                 gl.enableVertexAttribArray(loc);
-                gl.vertexAttribPointer(loc, attribute.type.attribCount, gl[attribute.type.attribType], attribute.isNormalized, attribute.stride, offset);
+                if (type.attribType == "INT")
+                {
+                    gl.vertexAttribIPointer(loc, type.attribCount, gl[type.attribType], attribute.stride, offset);
+                }
+                else
+                {
+                    gl.vertexAttribPointer(loc, type.attribCount, gl[type.attribType], attribute.isNormalized, attribute.stride, offset);
+                }
                 if (attribute.instanced)
                 {
                     gl.vertexAttribDivisor(loc, attribute.instanced);
                 }
-                offset += attribute.type.bytes / attribute.type.attribLocs;
+                offset += type.bytes / type.attribLocs;
             }
         }
 
@@ -265,6 +287,14 @@ export class GPUContextGL
         this.lastErrorTag = tag;
         console.error(tag, error);
     }
+
+    _makeBindFuncs()
+    {
+        ShaderValueType.MAT4._bindFunc = (gl, loc, data) =>
+        {
+            gl.uniformMatrix4fv(loc, false, data);
+        } 
+    }
     
     setViewport(x, y, w, h)
     {
@@ -286,6 +316,14 @@ export class GPUContextGL
         gl.useProgram(program);
     }
 
+
+    bindUniformValue(program, valueTypeInfo, name, arrayBuffer)
+    {
+        const gl = this.gl;
+        var loc = gl.getUniformLocation(program, name);
+        valueTypeInfo._bindFunc(gl, loc, arrayBuffer);
+    }
+
     /**
      * 
      * @param {GPUGeometryBinding} meshBinding 
@@ -296,7 +334,6 @@ export class GPUContextGL
         const gl = this.gl;
      
         gl.bindVertexArray(geometryBinding.glVAO);
-        gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
 
         if (geometryBinding.isIndexed)
         {
@@ -313,10 +350,12 @@ export class GPUContextGL
         {
             if (instanceCount)
             {
+                console.log("inst");
                 gl.drawArraysInstanced(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount, instanceCount);
             }
             else
             {
+                console.log("not inst");
                 gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
             }
         }

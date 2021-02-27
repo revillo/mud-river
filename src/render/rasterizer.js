@@ -25,16 +25,16 @@ export class Rasterizer
         const gpu = this.gpu;
 
         scene.renderBins.forEach(function(renderBin) {
-            gpu.bindProgram(renderBin.program);
+            renderBin.program.use();
 
-            if (renderBin.bindBuffers){
+            if (renderBin.bindBuffers) {
                 renderBin.bindBuffers(gpu);
             }
 
             renderBin.meshes.forEach(function(mesh)
             {
                 if (mesh.bindBuffers) {
-                    mesh.bindBuffers(gpu);
+                    mesh.bindBuffers(gpu, renderBin);
                 }
 
                 gpu.rasterizeMesh(mesh.binding, mesh.numInstances);

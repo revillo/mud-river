@@ -22,8 +22,6 @@ function ComputeLocations()
     }
 }
 
-console.log(DefaultAttributes);
-
 ComputeLocations();
 
 class AttributeLayoutGenerator 
@@ -56,6 +54,7 @@ class AttributeLayoutGenerator
             const attribute = attributes[attributeName];
             const type = attribute.type;
 
+            //Todo optimize for re-use
             layout[attribute.id] = 
             {
                 buffer : buffer,
@@ -71,10 +70,17 @@ class AttributeLayoutGenerator
         }
     }
 
-    generateAttributeLayout(vertexBuffer, vertexBufferOffset, instanceBuffer, instanceBufferOffset)
+    /**
+     * 
+     * @return {import("./gpu-types.js").AttributeLayoutMap}
+     */
+    generateAttributeLayout(vertexBufferView, instanceBufferView)
     {
-        this._generateAttributeHelper(this.layout, this.vertexAttribtues, vertexBuffer, vertexBufferOffset, 0);
-        this._generateAttributeHelper(this.layout, this.instanceAttributes, instanceBuffer, instanceBufferOffset, 1);
+        this._generateAttributeHelper(this.layout, this.vertexAttribtues, vertexBufferView.buffer, vertexBufferView.offset, 0);
+        if (instanceBufferView)
+        {
+            this._generateAttributeHelper(this.layout, this.instanceAttributes, instanceBufferView.buffer, instanceBufferView.offset, 1);
+        }
         return this.layout;
     }
 

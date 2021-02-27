@@ -7,28 +7,47 @@
   * @typedef {Object} AttributeLayout
   * @property {GPUBuffer} buffer
   * @property {number} location  
-  * @property {string} type - FLOAT, INT
-  * @property {number} count - count of elements per vertex, ie 3 for vec3
+  * @property {ShaderValueTypeInfo} type
   * @property {number} offset 
   * @property {number} stride
   * @property {bool} [isNormalized]
 */
 
 /**
+ * @typedef {Map<string, AttributeLayout>} AttributeLayoutMap
+ */
+
+/**
+ * @typedef {Object} GPUBuffer
+ * @property {Object} glBuffer
+ * @property {bool} inited
+ */
+
+/**
+ * @typedef {Object} ShaderValueTypeInfo
+ * @property {number} bytes - size of one value in bytes
+ * @property {number} attribLocs - number of locations required for attribute binding
+ * @property {string} attribType - type to use for attribute pointers
+ * @property {number} attribCount - count to use for attribute pointers
+ * @property {number} typeCount - number of primitive types, eg 16 for mat4
+ * @property {Object} BufferType (Float32Array, Int32Array, etc)
+ */
+
+/**
  * @readonly
- * @enum {string}
+ * @enum {ShaderValueTypeInfo}
  * 
  */
 const ShaderValueType =
 {
-    FLOAT : {id : "FLOAT", bytes: 4, attribLocs: 1, attribType: "FLOAT", attribCount : 1}
-    ,MAT4 : {id : "MAT4", bytes : 64, attribLocs: 4, attribType : "FLOAT", attribCount : 4}
-    ,COLOR3 : {id: "COLOR3", bytes : 3, attribLocs: 1}
-    ,COLOR4 :  {id: "COLOR3", bytes : 4, attribLocs: 1}
-    ,VEC2 : {id: "VEC2", bytes: 8, attribLocs: 1, attribType : "FLOAT", attribCount : 2}
-    ,VEC3 : {id: "VEC3", bytes: 12, attribLocs: 1, attribType : "FLOAT", attribCount : 3}
-    ,VEC4 :  {id: "VEC4", bytes : 16, attribLocs: 1, attribType : "FLOAT", attribCount : 4}
-    ,IVEC4 : {id: "IVEC4", bytes: 16, attribLocs: 1, attribType : "INT", attribCount : 4}
+    FLOAT : {id : "FLOAT", bytes: 4, attribLocs: 1, attribType: "FLOAT", attribCount : 1, typeCount : 1, BufferType : Float32Array}
+    ,MAT4 : {id : "MAT4", bytes : 64, attribLocs: 4, attribType : "FLOAT", attribCount : 4, typeCount : 16, BufferType : Float32Array}
+    ,COLOR3 : {id: "COLOR3", bytes : 3, attribLocs: 1, attribType: "UNSIGNED_BYTE", attribCount : 3, typeCount : 3, BufferType: Uint8Array}
+    ,COLOR4 :  {id: "COLOR4", bytes : 4, attribLocs: 1, attribType: "UNSIGNED_BYTE", attribCount : 4, typeCount : 4, BufferType: Uint8Array}
+    ,VEC2 : {id: "VEC2", bytes: 8, attribLocs: 1, attribType : "FLOAT", attribCount : 2, typeCount : 2, BufferType : Float32Array}
+    ,VEC3 : {id: "VEC3", bytes: 12, attribLocs: 1, attribType : "FLOAT", attribCount : 3, typeCount : 3, BufferType : Float32Array}
+    ,VEC4 :  {id: "VEC4", bytes : 16, attribLocs: 1, attribType : "FLOAT", attribCount : 4, typeCount : 4, BufferType : Float32Array}
+    ,IVEC4 : {id: "IVEC4", bytes: 16, attribLocs: 1, attribType : "INT", attribCount : 4, typeCount : 4, BufferType : Int32Array}
 }
 
 

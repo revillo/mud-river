@@ -1,9 +1,11 @@
 import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
 import { Rasterizer } from '../render/rasterizer.js';
-import { GPUContextGL} from '../render/gpu.js'
-import { ShaderBuilder} from '../render/shader-builder.js'
+import { GPUContext} from '../render/gpu.js'
+import { RasterShaderBuilder} from '../render/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
+import {UniformBlockBuffer, BufferManager} from '../render/buffer.js'
+import { RasterProgram } from '../render/program.js';
 
 var start = function()
 {        
@@ -13,87 +15,61 @@ var start = function()
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const gpu = new GPUContextGL(canvas);
+    const gpu = new GPUContext(canvas);
     const renderer = new Rasterizer(gpu);
+    const program = new RasterProgram(gpu);
+    const bufferManager = new BufferManager(gpu);
     
-    const vertBuilder = new ShaderBuilder(gpu.platform, ShaderStage.VERTEX);
-    const fragBuilder = new ShaderBuilder(gpu.platform, ShaderStage.FRAGMENT);
-
-    console.log(vertBuilder.text);
-    console.log(fragBuilder.text);
-    
-    const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage)
-    const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage)
-
-    const program = gpu.createProgram(vertShader, fragShader, DefaultAttributes);
-
     function makeQuadMesh()
     {
 
-        //Test Quad
-       
-        var triPositions = [
+        //Make buffer views for geometry
+        const vertBufferView = bufferManager.allocVertexBufferView(new Float32Array([
             -1.0, -1.0, 0.5, 
             1.0, -1.0, 0.5,
             1.0, 1.0, 0.5,
             -1.0, 1.0, 0.5 
-        ];
+        ]));
 
-        var triIndices = [
+        const indexBufferView = bufferManager.allocIndexBufferView(new Uint16Array([
             0, 1, 2, 0, 2, 3
-        ];
+        ]));
 
-        var vertBuffer = gpu.createBuffer(BufferType.VERTEX);
-        var indexBuffer = gpu.createBuffer(BufferType.INDEX);
-
-        gpu.uploadArrayBuffer(vertBuffer, new Float32Array(triPositions));
-        gpu.uploadArrayBuffer(indexBuffer, new Uint16Array(triIndices));
-
-
+        //Create geometry binding
         var attrGen = new AttributeLayoutGenerator([DefaultAttributes.Position]); 
-        const triVertexLayout = attrGen.generateAttributeLayout(vertBuffer, 0);
+        const triVertexLayout = attrGen.generateAttributeLayout(vertBufferView);
+        const triBinding = gpu.createGeometryBinding(triVertexLayout, indexBufferView);
 
-        const indexLayout = 
-        {
-            buffer : indexBuffer,
-            count : triIndices.length,
-            start : 0
-        }
-        
-        const triBinding = gpu.createGeometryBinding(triVertexLayout, indexLayout);
+        //Create uniform buffer for locals
+        const localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
+        const myBlock = localsBuffer.getBlock(0);
+        mat4.identity(myBlock.model);
 
-        const worldTransform = mat4.create();
-
+        //Return a mesh rendering context
         return {
             binding : triBinding,
-            worldTransform : mat4.create(),
             numInstances : 0,
-            bindBuffers : function(gpu)
+            bindBuffers : function(gpu, renderBin)
             {
-                const modelUniformLoc = gpu.gl.getUniformLocation(program, "u_Locals.model");
-                gpu.gl.uniformMatrix4fv(modelUniformLoc, false, worldTransform);
+                localsBuffer.bindUniformBlock(0, renderBin.program)
             }
         };
     }
+     
+    const globalsBuffer = bufferManager.allocUniformBlockBuffer("Globals", 1, program.uniformBlocks.Globals);
+    const globalBlock = globalsBuffer.getBlock(0);
+    mat4.identity(globalBlock.viewProjection);
 
-    const camera = {
-        projection : mat4.create(),
-        view : mat4.create(),
-        viewProjection : mat4.create()
-    };
-
-    //Test Sphere
-    var triangleMesh = makeQuadMesh();
+    var quadMesh = makeQuadMesh();
 
     const triRenderBin = {
         program : program,
         meshes : [
-            triangleMesh
+            quadMesh
         ],
-        bindBuffers : (gpu) =>
+        bindBuffers : function(gpu) 
         {
-            var vploc = gpu.gl.getUniformLocation(program, "u_Globals.viewProjection");
-            gpu.gl.uniformMatrix4fv(vploc, false, camera.viewProjection);
+            globalsBuffer.bindUniformBlock(0, this.program);
         }
     };
 
