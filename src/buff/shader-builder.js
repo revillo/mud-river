@@ -85,28 +85,28 @@ export class RasterShaderBuilder
     {   
         for (let blockName in blocks)
         {
-            this.$("\nstruct " + blockName + "{");
+            this.$(`\nstruct  ${blockName}  {`);
             const block = blocks[blockName];
 
             for (let propertyName in block)
             {
                 let typeInfo = block[propertyName];
 
-                this.$(typeInfo.id + " " + propertyName + ";");
+                this.$(`${typeInfo.id}  ${propertyName};`);
             }
 
-            this.$("};\n" + typeName + blockName +  prefix + blockName + ";\n");
+            this.$(`};\n${typeName}  ${blockName}  ${prefix}${blockName};\n`);
         }
     }
     
     _writeUniforms()
     {
-        this._writeBlocks(this.uniformBlocks, "UNIFORM ", " u_");
+        this._writeBlocks(this.uniformBlocks, "UNIFORM", "u_");
     }
 
     _writeVaryings()
     {
-        this._writeBlocks(this.varyingBlocks, "VARYING ", " v_");
+        this._writeBlocks(this.varyingBlocks, "VARYING", "v_");
     }
 
     _writeAttributes()
@@ -114,15 +114,13 @@ export class RasterShaderBuilder
         for (let propertyName in this.vertexAttributes)
         {
             let typeInfo = this.vertexAttributes[propertyName];
-
-            this.$("ATTRIBUTE " + typeInfo.id + " a_" + propertyName + ";");
+            this.$(`ATTRIBUTE ${typeInfo.id} a_${propertyName};`)
         }
 
         for (let propertyName in this.instanceAttributes)
         {
             let typeInfo = this.instanceAttributes[propertyName];
-
-            this.$("ATTRIBUTE " + typeInfo.id + " a_" + propertyName + ";");
+            this.$(`ATTRIBUTE ${typeInfo.id} a_${propertyName};`)
         }
     }
 
@@ -130,7 +128,7 @@ export class RasterShaderBuilder
     {
         for (let propertyName in this.defines)
         {
-            this.$("#define " + propertyName + " " + this.defines[propertyName]);
+            this.$(`#define ${propertyName} ${this.defines[propertyName]}`)
         }
     }
 

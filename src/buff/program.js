@@ -4,11 +4,8 @@ import { RasterShaderBuilder } from "./shader-builder.js";
 
 export class RasterProgram
 {
-    constructor (gpu, attributes, shaderMods)
+    constructor (gpu, attributes = DefaultAttributes, shaderMods = [])
     {
-        attributes = attributes || DefaultAttributes;
-        shaderMods = shaderMods || [];
-
         let vertBuilder = new RasterShaderBuilder(gpu.platform, ShaderStage.VERTEX, shaderMods);
         let fragBuilder = new RasterShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, shaderMods);
         

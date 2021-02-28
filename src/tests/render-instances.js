@@ -1,14 +1,14 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../render/gpu-types.js';
-import { Rasterizer } from '../render/rasterizer.js';
-import { GPUContext} from '../render/gpu.js'
-import { RasterShaderBuilder} from '../render/shader-builder.js'
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../buff/gpu-types.js';
+import { Rasterizer } from '../buff/rasterizer.js';
+import { GPUContext} from '../buff/gpu.js'
+import { RasterShaderBuilder} from '../buff/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../math/index.js'
 import { Sphere } from '../shape/sphere.js'
-import { ShaderNormals } from '../render/shader-mods/normals.js'
-import { ShaderInstances } from '../render/shader-mods/instances.js'
-import { AttributeLayoutGenerator, DefaultAttributes } from '../render/attribute.js';
-import { RasterProgram } from '../render/program.js';
-import { UniformBlockBuffer, BufferManager } from '../render/buffer.js';
+import { ShaderNormals } from '../buff/shader-mods/normals.js'
+import { ShaderInstances } from '../buff/shader-mods/instances.js'
+import { AttributeLayoutGenerator, DefaultAttributes } from '../buff/attribute.js';
+import { RasterProgram } from '../buff/program.js';
+import { UniformBlockBuffer, BufferManager } from '../buff/buffer.js';
 import { Timer } from '../util/timer.js';
 
 var start = function()

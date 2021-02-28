@@ -2,7 +2,7 @@
  * @typedef {import("./gpu-types").ShaderValueTypeInfo} ShaderValueTypeInfo
  */
 
-import { ShaderValueType } from "./gpu-types.js";
+import { ShaderValueType, BufferUsage } from "./gpu-types.js";
 
 
 /**
@@ -125,7 +125,6 @@ export class GPUContext
         const gl = this.gl;
         gl.deleteShader(shader);
     }
-    
     /**
      * 
      * @param {string} type - one of BufferType.VERTEX, BufferType.INDEX, BufferType.UNIFORM 
@@ -133,10 +132,9 @@ export class GPUContext
      * @param {number} [size] - size in bytes
      * @return {import("./gpu-types.js").GPUBuffer}
      */
-    createBuffer(type, usage, size)
+    createBuffer(type, usage = BufferUsage.STATIC, size = 0)
     {
         const gl = this.gl;
-        usage = usage || "STATIC_DRAW";
         usage = gl[usage];
         let target = gl[type];
         let inited = false;
@@ -173,10 +171,8 @@ export class GPUContext
      * @param {ArrayBufferView} arrayBuffer 
      * @param {number} [dstOffset]
      */
-    uploadArrayBuffer(gpuBuffer, arrayBuffer, dstOffset)
+    uploadArrayBuffer(gpuBuffer, arrayBuffer, dstOffset = 0)
     {
-        dstOffset = dstOffset || 0;
-
         const gl = this.gl;
         const target = gpuBuffer.target;
         gl.bindBuffer(target, gpuBuffer.glBuffer);
@@ -202,8 +198,7 @@ export class GPUContext
     /**
      * 
      * @param {Map<string, AttributeLayout>} attributeLayout 
-     * @param {number} indexCount
-     * @param {IndexLayout} [indexLayout] 
+     * @param {IndexLayout} indexLayout 
      * @return {GPUGeometryBinding}
      */
     createGeometryBinding(attributeLayout, indexLayout)
@@ -350,12 +345,10 @@ export class GPUContext
         {
             if (instanceCount)
             {
-                console.log("inst");
                 gl.drawArraysInstanced(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount, instanceCount);
             }
             else
             {
-                console.log("not inst");
                 gl.drawArrays(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount);
             }
         }

@@ -1,13 +1,14 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from './render/gpu-types.js';
-import { Rasterizer } from './render/rasterizer.js';
-import { GPUContext} from './render/gpu.js'
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from './buff/gpu-types.js';
+import { Rasterizer } from './buff/rasterizer.js';
+import { GPUContext} from './buff/gpu.js'
 import { mat4, vec3, quat, glMatrix } from './math/index.js'
 import { Sphere } from './shape/sphere.js'
-import { ShaderNormals } from './render/shader-mods/normals.js'
-import { ShaderInstances } from './render/shader-mods/instances.js'
-import { DefaultAttributes } from './render/attribute.js';
-import { RasterProgram } from './render/program.js';
-import { BufferManager, UniformBlockBuffer } from './render/buffer.js';
+import { ShaderNormals } from './buff/shader-mods/normals.js'
+import { ShaderInstances } from './buff/shader-mods/instances.js'
+import { DefaultAttributes } from './buff/attribute.js';
+import { RasterProgram } from './buff/program.js';
+import { BufferManager, UniformBlockBuffer } from './buff/buffer.js';
+import { Timer } from './util/timer.js';
 
 var start = function()
 {        
@@ -88,12 +89,28 @@ var start = function()
         world.createCollider(groundColliderDesc, groundBody.handle);
 
         var stepEvents = new RAPIER.EventQueue(true);
+        var params = new RAPIER.IntegrationParameters();
+        const targetDelta = 1.0/200.0;
 
         return {
             world : world,
+            clock : 0,
             sphereBody : sphereBody,
-            step : () => {
-                world.step(stepEvents)
+            step : function(dt) {
+                
+                /*
+                world.timestep = dt;
+                world.step(stepEvents, params);
+                */
+
+                this.clock += dt;
+
+                while(this.clock > targetDelta)
+                {
+                    this.clock -= targetDelta;
+                    world.timestep = targetDelta;
+                    world.step(stepEvents, params);
+                }
             }
         }
     }
@@ -128,9 +145,15 @@ var start = function()
         renderBins : [triRenderBin]
     };
     
+    const timer = new Timer();
+
     var frame = ()=>
     {
-        physWorld.step();
+        let dt = timer.tick();
+
+        if (dt <= 0.0) dt = (1/60.0);
+        if (dt > 1.0/60.0 ) dt = 1/60.0; 
+        physWorld.step(dt);
 
         var t = physWorld.world.colliders.get(0).translation();
         var r = physWorld.world.colliders.get(0).rotation();
@@ -148,7 +171,7 @@ var start = function()
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
         mat4.perspective(camera.projection, glMatrix.toRadian(60), canvas.width / canvas.height, 0.1, 100);
-        mat4.multiply(camera.viewProjection, camera.projection, camera.view);
+        mat4.multiply(globalBlock.viewProjection, camera.projection, camera.view);
     }
 
     window.physWorld = physWorld;
