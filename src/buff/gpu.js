@@ -4,6 +4,9 @@
 
 import { ShaderValueType, BufferUsage } from "./gpu-types.js";
 
+const DefaultTexture2DSettings = {
+    mipmap : true
+}
 
 /**
   * @class
@@ -16,6 +19,9 @@ export class GPUContext
      */
     constructor(canvas)
     {
+        //DEBUGGING
+        window.gpu = this;
+
         var canvasOpts = {antialias : true};
 
         this.gl = canvas.getContext("webgl2", canvasOpts);
@@ -53,6 +59,16 @@ export class GPUContext
         const gl = this.gl;
 
         gl.enable(gl.DEPTH_TEST);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        
+        //1 && 2
+        this.extensions = {
+            anisotropic : gl.getExtension('EXT_texture_filter_anisotropic')||
+            gl.getExtension('MOZ_EXT_texture_filter_anisotropic') ||
+            gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic'),
+        }
+
+
     }
 
     /**
@@ -94,7 +110,9 @@ export class GPUContext
             return null;
         }
 
-        return program;
+        return {
+            glProgram : program
+        }
     }
 
     /**
@@ -290,6 +308,39 @@ export class GPUContext
             gl.uniformMatrix4fv(loc, false, data);
         } 
     }
+
+    createTexture2D(image, settings = DefaultTexture2DSettings)
+    {
+        const gl = this.gl;
+        var glTex = gl.createTexture();
+        const target = gl.TEXTURE_2D;
+
+        gl.bindTexture(target, glTex);
+        gl.texImage2D(target, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+  
+        if (settings.mipmap)
+        {
+            gl.generateMipmap(target);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        }
+
+        gl.texParameteri(target, gl.TEXTURE_WRAP_S, gl.REPEAT);
+        gl.texParameteri(target, gl.TEXTURE_WRAP_T, gl.REPEAT);
+
+        const {anisotropic} = this.extensions;
+
+        if (anisotropic)
+        {
+            var max = gl.getParameter(anisotropic.MAX_TEXTURE_MAX_ANISOTROPY_EXT);
+            gl.texParameterf(gl.TEXTURE_2D, anisotropic.TEXTURE_MAX_ANISOTROPY_EXT, max);
+        }
+
+        return {
+            glTexture : glTex,
+            target : target
+        }
+    }
     
     setViewport(x, y, w, h)
     {
@@ -305,18 +356,32 @@ export class GPUContext
         gl.clearDepth(1);
     }
 
+    unbindProgram()
+    {
+        this.gl.useProgram(null);
+    }
+
     bindProgram(program)
     {
         const gl = this.gl;
-        gl.useProgram(program);
+        gl.useProgram(program.glProgram);
     }
-
 
     bindUniformValue(program, valueTypeInfo, name, arrayBuffer)
     {
         const gl = this.gl;
-        var loc = gl.getUniformLocation(program, name);
+        var loc = gl.getUniformLocation(program.glProgram, name);
         valueTypeInfo._bindFunc(gl, loc, arrayBuffer);
+    }
+
+    bindTexture(program, name, texture, channel = 0)
+    {
+        const gl = this.gl;
+        var loc = gl.getUniformLocation(program.glProgram, name);
+
+        gl.activeTexture(gl.TEXTURE0 + channel);
+        gl.bindTexture(texture.target, texture.glTexture);
+        gl.uniform1i(loc, channel);     
     }
 
     /**

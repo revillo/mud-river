@@ -86,4 +86,13 @@ const BufferUsage =
     DYNAMIC : "DYNAMIC_DRAW"
 }
 
-export {ShaderStage, BufferType, BufferUsage, ShaderValueType}
+/**
+ * @readonly
+ * @enum {Object}
+ */
+const TextureType =
+{
+    TEXTURE_2D : {id: "TEXTURE2D"}
+}
+
+export {ShaderStage, BufferType, BufferUsage, ShaderValueType, TextureType}

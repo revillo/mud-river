@@ -138,7 +138,7 @@ export class UniformBlockBuffer extends BlockBuffer
         {
             const property = this.schema[propertyName];
             const type = property.type;
-            this.gpu.bindUniformValue(program.glProgram, type, property.bindName, block[propertyName]);
+            this.gpu.bindUniformValue(program.gpuProgram, type, property.bindName, block[propertyName]);
         }
     }
 }

@@ -41,7 +41,7 @@ export class Rasterizer
             });
         });
 
-        gpu.bindProgram(null);
+        gpu.unbindProgram();
     }
 
     clear(clearColor)

@@ -27,10 +27,10 @@ var start = function()
     //Manage instances
     const instanceCount = 2;
     var instanceBB = bufferManager.allocInstanceBlockBuffer(instanceCount, program.instanceAttributes, BufferUsage.DYNAMIC);
-    const m1 = instanceBB.getBlock(0).InstanceMatrix;
+    const m1 = instanceBB.getBlock(0).instanceMatrix;
     mat4.identity(m1);
 
-    const m2 = instanceBB.getBlock(1).InstanceMatrix;
+    const m2 = instanceBB.getBlock(1).instanceMatrix;
     mat4.fromTranslation(m2, [3,0,0]);
 
     instanceBB.uploadBlocks(0, instanceCount);
@@ -41,8 +41,8 @@ var start = function()
         const sphereGeometry = sphere.createGeometry();
 
         const binding = bufferManager.createGeometryBinding(sphereGeometry, 
-            [DefaultAttributes.Position, DefaultAttributes.Normal, DefaultAttributes.UV0], 
-            [DefaultAttributes.InstanceMatrix],
+            [DefaultAttributes.position, DefaultAttributes.normal, DefaultAttributes.uv0], 
+            [DefaultAttributes.instanceMatrix],
             instanceBB.getInstanceBufferView()
         );
   

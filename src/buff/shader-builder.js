@@ -17,9 +17,11 @@ export class RasterShaderBuilder
         this.lines = [];
         this.modules = modules || [];
         
-        this.defines = {};
-        this.varyings = {};
-        
+        this.textures =
+        {
+             
+        }
+
         this.uniformBlocks = 
         {
             Globals : {
@@ -33,7 +35,7 @@ export class RasterShaderBuilder
 
         this.vertexAttributes = 
         {
-            Position : ShaderValueType.VEC3
+            position : ShaderValueType.VEC3
         }
 
         this.instanceAttributes = {};
@@ -65,7 +67,8 @@ export class RasterShaderBuilder
             VEC4 : "vec4",
             MAT4 : "mat4",
             COLOR3 : "lowp vec3",
-            COLOR4 : "lowp vec4"
+            COLOR4 : "lowp vec4",
+            TEXTURE2D : "sampler2D"
         }
 
     }
@@ -99,6 +102,14 @@ export class RasterShaderBuilder
         }
     }
     
+    _writeTextures()
+    {
+        for (let texName in this.textures)
+        {
+            this.$(`UNIFORM ${this.textures[texName].id} t_${texName};`)
+        }
+    }
+
     _writeUniforms()
     {
         this._writeBlocks(this.uniformBlocks, "UNIFORM", "u_");
@@ -146,7 +157,7 @@ void main()
         this.lines.push(...this.vertexMain);
 
         this.$(`
-    vec4 worldPosition = worldMatrix * vec4(a_Position, 1.0);
+    vec4 worldPosition = worldMatrix * vec4(a_position, 1.0);
     v_PerFragment.worldPosition = worldPosition.xyz;
     gl_Position = u_Globals.viewProjection * worldPosition;
 }`);
@@ -155,30 +166,47 @@ void main()
 
     _buildFrag()
     {
+        this._writeTextures();
+
         if (this.platform.glVersion == 2)
         {
-            this.lines.push("FRAG_OUT vec4 outColor;");
+            this.$("FRAG_OUT vec4 outColor;");
         }
 
         this.lines.push(...this.fragmentFunctions);
 
-        this.lines.push(`\nvoid main(){\n`);
+        this.$(`\nvoid main(){\n`);
 
         this.lines.push(...this.fragmentMain);
 
         if (this.platform.glVersion == 2)
         {
-            this.lines.push(`outColor = finalColor;\n}`);
+            this.$(`outColor = finalColor;\n}`);
         }
         else
         {
-            this.lines.push(`gl_FragColor = finalColor;\n}`);
+            this.$(`gl_FragColor = finalColor;\n}`);
         }
     }
 
     build()
     {
+        var dependencies = [];
 
+        //Gather all dependencies recursively
+        this.modules.forEach((mod) => {
+            dependencies.push(...mod.getDependencies());
+        });
+
+        this.modules.push(...dependencies);
+
+        //Remove duplicates
+        this.modules = [...new Set(this.modules)];
+
+        //Sort by rank
+        this.modules.sort((a, b) => a.getRank() - b.getRank());
+
+        //Finally apply
         this.modules.forEach((mod) => {
             mod.apply(this);
         });
@@ -189,6 +217,7 @@ void main()
         {
             this.$("#version 300 es");
             this.$("#define UNIFORM uniform");
+            this.$("#define SAMPLE_2D texture");
 
             if (this.stage == ShaderStage.VERTEX)
             {

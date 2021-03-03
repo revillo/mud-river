@@ -7,7 +7,7 @@ const mod = {
     },
 
     vertexAttributes : {
-        Normal : ShaderValueType.VEC3
+        normal : ShaderValueType.VEC3
     },
 
     varyingBlocks : {
@@ -17,7 +17,7 @@ const mod = {
     },
 
     vertexMain : [`
-        v_PerFragment.worldNormal = (worldMatrix * vec4(a_Normal, 0.0)).xyz;
+        v_PerFragment.worldNormal = (worldMatrix * vec4(a_normal, 0.0)).xyz;
     `],
 
     fragmentMain : [`

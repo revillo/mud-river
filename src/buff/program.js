@@ -19,12 +19,12 @@ export class RasterProgram
         this.vertexAttributes = fragBuilder.vertexAttributes;
         this.instanceAttributes = fragBuilder.instanceAttributes;
         
-        this.glProgram = gpu.createProgram(vertShader, fragShader, attributes);
+        this.gpuProgram = gpu.createProgram(vertShader, fragShader, attributes);
         this.gpu = gpu;
     }
 
     use()
     {
-        this.gpu.bindProgram(this.glProgram);
+        this.gpu.bindProgram(this.gpuProgram);
     }
 }

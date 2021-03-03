@@ -7,11 +7,11 @@ const mod = {
     },
 
     instanceAttributes : {
-        InstanceMatrix : ShaderValueType.MAT4
+        instanceMatrix : ShaderValueType.MAT4
     },
 
     vertexMain : [`
-    worldMatrix = worldMatrix * a_InstanceMatrix;
+    worldMatrix = worldMatrix * a_instanceMatrix;
     `],
 };
 
