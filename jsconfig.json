@@ -6,6 +6,6 @@
     "resolve": {
       "extensions" : [".js"]
     },
-    "include": ["src/**/*"],
+    "include": ["src/**/*", "lib/**/*", "tests/**/*"],
     "checkJs" : true
   }

@@ -8,24 +8,6 @@ export class Asset
         this.isOnGPU = false;
     }
 
-    /*
-    getGPUBinding(gpu, options)
-    {
-        if (!this.isLoaded)
-        {
-            console.error("Can't bind unloaded asset");
-            return this.gpuFallback || null;
-        }
-
-        if (this.onGPU)
-        {
-            return this.onGPU;
-        }
-
-        this.onGPU = this.loadGPU(gpu, options);
-        return this.onGPU;
-    }*/
-
     getPromise()
     {
         return this.promise;
@@ -51,6 +33,15 @@ class BatchLoad
         this.promise = Promise.all(this.promises);
     }
 
+    /**
+     * 
+     * @param {*} index - get asset associated with index or name 
+     */
+    get(index)
+    {
+        return this.assets[index];
+    }
+
     getPromise()
     {
         return this.promise;
@@ -71,20 +62,20 @@ export class AssetManager //Abstract
 {
     constructor()
     {
-        this.assets = {};
+        this.assets = new Map();
     }
 
     fromUrl(url)
     {
         const assets = this.assets;
 
-        if (assets[url])
+        if (assets.has(url))
         {
-            return assets[url];
+            return assets.get(url);
         }
 
         var asset = this.newAsset();
-        assets[url] = asset;
+        assets.set(url, asset);
         asset.loadFromUrl(url);
 
         return asset;

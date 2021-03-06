@@ -1,15 +1,15 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../buff/gpu-types.js';
-import { Rasterizer } from '../buff/rasterizer.js';
-import { GPUContext} from '../buff/gpu.js'
-import { RasterShaderBuilder} from '../buff/shader-builder.js'
-import { mat4, vec3, quat, glMatrix } from '../math/index.js'
-import { Sphere } from '../shape/sphere.js'
-import { ShaderNormals } from '../buff/shader-mods/normals.js'
-import { ShaderInstances } from '../buff/shader-mods/instances.js'
-import { AttributeLayoutGenerator, DefaultAttributes } from '../buff/attribute.js';
-import { RasterProgram } from '../buff/program.js';
-import { UniformBlockBuffer, BufferManager } from '../buff/buffer.js';
-import { Timer } from '../util/timer.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../../src/buff/gpu-types.js';
+import { Rasterizer } from '../../src/buff/rasterizer.js';
+import { GPUContext} from '../../src/buff/gpu.js'
+import { RasterShaderBuilder} from '../../src/buff/shader-builder.js'
+import { mat4, vec3, quat, glMatrix } from '../../src/math/index.js'
+import { Sphere } from '../../src/shape/sphere.js'
+import { ShaderNormals } from '../../src/buff/shader-mods/normals.js'
+import { ShaderInstances } from '../../src/buff/shader-mods/instances.js'
+import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/buff/attribute.js';
+import { RasterProgram } from '../../src/buff/program.js';
+import { UniformBlockBuffer, BufferManager } from '../../src/buff/buffer.js';
+import { Timer } from '../../src/util/timer.js';
 
 var start = function()
 {        

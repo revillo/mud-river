@@ -50,7 +50,7 @@ class BlockBuffer
                 set : setError
             });
 
-            blockSize += type.bytes;
+            blockSize += type.sizeBytes;
         }
 
         this.blockSize = blockSize;
@@ -97,9 +97,14 @@ class BlockBuffer
         }
 
         var offset = index * this.blockSize;
-        var block = new this.blockClass(offset);
 
-        /*
+        //var block = new this.blockClass(offset);
+
+        //big todo
+        var block = {_index: index, _buffer: this, bind: function(program) {
+            this._buffer.bindUniformBlock(this._index, program);
+        }};
+
         for (let propertyName in this.schema)
         {
             const property = this.schema[propertyName];
@@ -107,7 +112,8 @@ class BlockBuffer
             const type = property.type;
             block[propertyName] = new type.BufferType(this.cpuBuffer, offset, type.typeCount);
             offset += property.blockOffset;
-        }*/
+        }
+        
 
         this.blocks[index] = block;
         return block;
@@ -182,15 +188,13 @@ export class BufferManager
     }
 
 
-    allocVertexBufferView(arrayBufferView, usage)
+    allocVertexBufferView(arrayBufferView, usage = BufferUsage.STATIC)
     {
-        usage = usage || BufferUsage.STATIC;
         return this.allocBufferView(BufferType.VERTEX, usage, arrayBufferView);
     }
 
-    allocIndexBufferView(arrayBufferView, usage)
+    allocIndexBufferView(arrayBufferView, usage = BufferUsage.STATIC)
     {
-        usage = usage || BufferUsage.STATIC;
         let bufferView = this.allocBufferView(BufferType.INDEX, usage, arrayBufferView);
         bufferView.count = arrayBufferView.length;
         
@@ -208,9 +212,8 @@ export class BufferManager
         return bufferView;
     }
 
-    allocInstanceBufferView(arrayBufferView, usage)
+    allocInstanceBufferView(arrayBufferView, usage = BufferUsage.STATIC)
     {
-        usage = usage || BufferUsage.STATIC;
         return this.allocBufferView(BufferType.ATTRIBUTE, usage, arrayBufferView);
     }
 
@@ -222,9 +225,8 @@ export class BufferManager
         };
     }
 
-    allocInstanceBlockBuffer(count, schema, bufferUsage)
+    allocInstanceBlockBuffer(count, schema, bufferUsage = BufferUsage.DYNAMIC)
     {
-        bufferUsage = bufferUsage || BufferUsage.DYNAMIC;
 
         let abb = new AttributeBlockBuffer(count, schema);
         let bv = this.allocEmptyBufferView(BufferType.ATTRIBUTE, bufferUsage, abb.count * abb.blockSize);

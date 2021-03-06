@@ -1,5 +1,6 @@
 import { DefaultAttributes } from "../buff/attribute.js";
 import { BufferType, BufferUsage, ShaderValueType } from "../buff/gpu-types.js";
+import { prune } from "../util/object.js";
 import { Asset, AssetManager } from "./assets.js";
 
 const GLTFAttribute =
@@ -22,6 +23,18 @@ const GLTFIndexType =
     5125 : {size: 4} //unsigned int
 }
 
+
+const GLTFMaterialBindTextures = function(gpu, program)
+{
+    var i = 0;
+    for (let texName in this.textures)
+    {
+        this.textures[texName].bind(program, texName, i);
+        i += 1;
+    }
+}
+
+
 export class GLTFAsset extends Asset
 {
     loadFromUrl(url)
@@ -35,6 +48,7 @@ export class GLTFAsset extends Asset
             .then(gltf => thiz.loadBuffers(gltf))
             .then(gltf => thiz.createBufferViews(gltf))
             .then(gltf => thiz.processAccessors(gltf))
+            .then(gltf => thiz.processMaterials(gltf))
             .then(gltf => thiz.processMeshes(gltf))
             .then(gltf => {
                 thiz.gltf = gltf;
@@ -47,13 +61,56 @@ export class GLTFAsset extends Asset
         return this;
     }
 
+    processMaterials(gltf)
+    {
+        //const thiz = this;
+
+        const resolveTextureAsset = (texture) => {
+            if (!texture) return null;
+            //return thiz.textureBatch.get(texture.index);
+            return gltf.textures[texture.index].asset;
+        }
+
+        gltf.materials.forEach(material => {
+            material.textures = {};
+            material.factors = {};
+
+            material.bindTextures = GLTFMaterialBindTextures;
+            const pbr = material.pbrMetallicRoughness;
+            if(pbr)
+            {
+                material.textures.t_baseColor = resolveTextureAsset(pbr.baseColorTexture);
+                material.textures.t_metallicRoughness = resolveTextureAsset(pbr.metallicRoughnessTexture);
+                material.factors.u_baseColor = new Float32Array(pbr.baseColorFactor || [1,1,1,1]);
+                material.factors.u_metallic = pbr.metallicFactor || 0;
+                material.factors.u_roughness = pbr.roughnessFactor || 1;
+            }
+
+            material.textures.t_normal = resolveTextureAsset(material.normalTexture);
+            material.textures.t_occlusion = resolveTextureAsset(material.occlusionTexture);
+            material.textures.t_emissive = resolveTextureAsset(material.emissiveTexture);
+
+            material.factors.u_emissive = new Float32Array(material.emissiveFactor || [0,0,0]);
+
+            prune(material.textures);
+            prune(material.factors);
+        });
+
+        return Promise.resolve(gltf);
+    }
+
     processMeshes(gltf)
     {
         const bufferManager = this.manager.bufferManager;
 
         gltf.meshes.forEach(mesh => {
             mesh.primitives.forEach(primitive => {
+        
+                /**
+                 * @type {Map<string, AttributeLayout>}
+                 */
                 primitive.vertexLayout = {};
+                primitive.material = gltf.materials[primitive.material];
 
                 for (var attribName in primitive.attributes)
                 {
@@ -64,7 +121,7 @@ export class GLTFAsset extends Asset
 
                     if (!bv.gpuView)
                     {
-                        bv.gpuView = bufferManager.allocBufferView(BufferType.VERTEX, BufferUsage.STATIC, bv.cpuView);
+                        bv.gpuView = bufferManager.allocBufferView(BufferType.VERTEX, BufferUsage.STATIC, bv.cpuBuffer);
                     }
 
                     primitive.vertexLayout[myAttribute.id] = {
@@ -78,13 +135,12 @@ export class GLTFAsset extends Asset
                     }
                 }
 
-
                 const indexAccessor = gltf.accessors[primitive.indices];
                 const ibv = indexAccessor.bufferView;
 
                 if (!ibv.gpuView)
                 {
-                    ibv.gpuView = bufferManager.allocBufferView(BufferType.INDEX, BufferUsage.STATIC, ibv.cpuView);
+                    ibv.gpuView = bufferManager.allocBufferView(BufferType.INDEX, BufferUsage.STATIC, ibv.cpuBuffer);
                 }
 
                 primitive.indexLayout = {
@@ -93,7 +149,6 @@ export class GLTFAsset extends Asset
                     type : indexAccessor.componentType,
                     start : ibv.gpuView.offset / GLTFIndexType[indexAccessor.componentType].size,
                 }
-
             })
         });
 
@@ -107,18 +162,12 @@ export class GLTFAsset extends Asset
 
         gltf.bufferViews.forEach(view => {
 
-            view.cpuView = new Uint8Array(gltf.cpuBuffers[view.buffer], view.byteOffset, view.byteLength);
+            view.cpuBuffer = new Uint8Array(gltf.cpuBuffers[view.buffer], view.byteOffset, view.byteLength);
 
-            if (view.target == 34963)
+            if (view.target)
             {
-                view.gpuView = bufferManager.allocBufferView(BufferType.INDEX, BufferUsage.STATIC, view.cpuView);
+                view.gpuView = bufferManager.allocBufferView(view.target, BufferUsage.STATIC, view.cpuBuffer);
             }
-            else if (view.target == 34962)
-            {
-                view.gpuView = bufferManager.allocBufferView(BufferType.VERTEX, BufferUsage.STATIC, view.cpuView);
-            }
-           
-            
         });
 
         return Promise.resolve(gltf);
@@ -137,6 +186,24 @@ export class GLTFAsset extends Asset
         var thiz = this;
 
         console.log(gltf);
+
+        if (gltf.images)
+        {
+            ///*
+            
+            //const batch = {};
+            gltf.images.forEach((image,i) => {
+                gltf.images[i].asset = this.manager.textureManager.fromUrl(this.relativePath + image.uri);
+                //batch[i] = {url : this.relativePath + image.uri}
+            });
+
+            gltf.textures.forEach((texture, i) => {
+                gltf.textures[i] = {asset: gltf.images[texture.source].asset};
+            })
+
+            //this.textureBatch = this.manager.textureManager.loadBatch(batch);
+            
+        }
 
         return new Promise((resolve, reject) => {
             

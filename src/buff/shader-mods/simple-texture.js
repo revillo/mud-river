@@ -7,11 +7,11 @@ const mod = {
     requires : [ShaderUV0],
 
     textures : {
-        emissive : TextureType.TEXTURE_2D
+        baseColor : TextureType.TEXTURE_2D
     },
 
     fragmentMain : [`
-        finalColor = SAMPLE_2D(t_emissive, v_PerFragment.uv0);
+        finalColor = SAMPLE_2D(t_baseColor, v_PerFragment.uv0);
         //finalColor = vec4(v_PerFragment.uv0, 1.0, 1.0);
     `]
 };

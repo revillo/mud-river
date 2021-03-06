@@ -2,7 +2,7 @@
  * @typedef {import("./gpu-types").ShaderValueTypeInfo} ShaderValueTypeInfo
  */
 
-import { ShaderValueType, BufferUsage } from "./gpu-types.js";
+import { ShaderValueType, BufferUsage, PrimitiveType } from "./gpu-types.js";
 
 const DefaultTexture2DSettings = {
     mipmap : true
@@ -125,7 +125,7 @@ export class GPUContext
     {
         const gl = this.gl;
 
-        var shader = gl.createShader(gl[stage]);
+        var shader = gl.createShader(stage);
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
         var success = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
@@ -145,25 +145,24 @@ export class GPUContext
     }
     /**
      * 
-     * @param {string} type - one of BufferType.VERTEX, BufferType.INDEX, BufferType.UNIFORM 
+     * @param {string} bufferType - one of BufferType.VERTEX, BufferType.INDEX, BufferType.UNIFORM 
      * @param {string} [usage] - must specify is size is specified
      * @param {number} [size] - size in bytes
      * @return {import("./gpu-types.js").GPUBuffer}
      */
-    createBuffer(type, usage = BufferUsage.STATIC, size = 0)
+    createBuffer(bufferType, usage = BufferUsage.STATIC, size = 0)
     {
         const gl = this.gl;
-        usage = gl[usage];
-        let target = gl[type];
+
         let inited = false;
 
         const buffer = gl.createBuffer();
         
         if (size)
         {
-            gl.bindBuffer(target, buffer);
-            gl.bufferData(target, size, usage);
-            gl.bindBuffer(target, null);
+            gl.bindBuffer(bufferType, buffer);
+            gl.bufferData(bufferType, size, usage);
+            gl.bindBuffer(bufferType, null);
             
             gl.bindBuffer
             inited = true;
@@ -171,7 +170,7 @@ export class GPUContext
 
         return {
             glBuffer : buffer,
-            target : target,
+            target : bufferType,
             usage : usage,
             inited: inited,
             size : size
@@ -240,19 +239,20 @@ export class GPUContext
             {
                 const loc = attribute.location + i;
                 gl.enableVertexAttribArray(loc);
-                if (type.attribType == "INT")
+                
+                if (type.attribType == PrimitiveType.INT)
                 {
-                    gl.vertexAttribIPointer(loc, type.attribCount, gl[type.attribType], attribute.stride, offset);
+                    gl.vertexAttribIPointer(loc, type.attribCount, type.attribType, attribute.stride, offset);
                 }
                 else
                 {
-                    gl.vertexAttribPointer(loc, type.attribCount, gl[type.attribType], attribute.isNormalized, attribute.stride, offset);
+                    gl.vertexAttribPointer(loc, type.attribCount, type.attribType, attribute.isNormalized, attribute.stride, offset);
                 }
                 if (attribute.instanced)
                 {
                     gl.vertexAttribDivisor(loc, attribute.instanced);
                 }
-                offset += type.bytes / type.attribLocs;
+                offset += type.sizeBytes / type.attribLocs;
             }
         }
 

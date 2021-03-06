@@ -14,6 +14,11 @@ export class Timer
         return this.tickMS() * 0.001;
     }
 
+    lastTickTime()
+    {
+        return this.lastTick * 0.001;
+    }
+
     /**
      * @return {number} - Delta time in milliseconds since last tick() call
      */

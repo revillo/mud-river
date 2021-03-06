@@ -1,16 +1,16 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../buff/gpu-types.js';
-import { Rasterizer } from '../buff/rasterizer.js';
-import { GPUContext} from '../buff/gpu.js'
-import { RasterShaderBuilder} from '../buff/shader-builder.js'
-import { mat4, vec3, quat, glMatrix } from '../math/index.js'
-import { AttributeLayoutGenerator, DefaultAttributes } from '../buff/attribute.js';
-import {UniformBlockBuffer, BufferManager} from '../buff/buffer.js'
-import { RasterProgram } from '../buff/program.js';
-import { TextureManager } from '../assets/texture.js';
-import { ShaderUV0 } from '../buff/shader-mods/uv0.js';
-import { ShaderSimpleTexture } from '../buff/shader-mods/simple-texture.js';
-import { GLTFManager } from '../assets/gltf.js';
-import { Timer } from '../util/timer.js';
+import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../../src/buff/gpu-types.js';
+import { Rasterizer } from '../../src/buff/rasterizer.js';
+import { GPUContext} from '../../src/buff/gpu.js'
+import { RasterShaderBuilder} from '../../src/buff/shader-builder.js'
+import { mat4, vec3, quat, glMatrix } from '../../src/math/index.js'
+import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/buff/attribute.js';
+import {UniformBlockBuffer, BufferManager} from '../../src/buff/buffer.js'
+import { RasterProgram } from '../../src/buff/program.js';
+import { TextureManager } from '../../src/assets/texture.js';
+import { ShaderUV0 } from '../../src/buff/shader-mods/uv0.js';
+import { ShaderSimpleTexture } from '../../src/buff/shader-mods/simple-texture.js';
+import { GLTFManager } from '../../src/assets/gltf.js';
+import { Timer } from '../../src/util/timer.js';
 
 
 export class RenderDemo
@@ -33,7 +33,7 @@ export class RenderDemo
         const renderer = new Rasterizer(gpu);
         const bufferManager = new BufferManager(gpu);
         const textureManager = new TextureManager(bufferManager);
-        const gltfManager = new GLTFManager(bufferManager);
+        const gltfManager = new GLTFManager(bufferManager, textureManager);
 
         const camera = {
             projection : mat4.create(),

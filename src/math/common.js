@@ -50,3 +50,14 @@ if (!Math.hypot)
     while (i--) y += arguments[i] * arguments[i];
     return Math.sqrt(y);
   };
+
+
+if (!Math.clamp)
+{
+  Math.clamp = function(num, lo, hi)
+  {
+    if (num < lo) return lo;
+    if (num > hi) return hi;
+    return num;
+  }
+}

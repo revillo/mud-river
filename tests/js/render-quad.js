@@ -1,7 +1,7 @@
-import { AttributeLayoutGenerator, DefaultAttributes } from "../buff/attribute.js";
-import { RasterProgram } from "../buff/program.js";
-import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
-import { mat4 } from "../math/index.js";
+import { AttributeLayoutGenerator, DefaultAttributes } from "../../src/buff/attribute.js";
+import { RasterProgram } from "../../src/buff/program.js";
+import { ShaderSimpleTexture } from "../../src/buff/shader-mods/simple-texture.js";
+import { mat4 } from "../../src/math/index.js";
 import { RenderDemo } from "./render-demo.js";
 
 class RenderQuad extends RenderDemo
@@ -45,8 +45,9 @@ class RenderQuad extends RenderDemo
                 numInstances : 0,
                 bindBuffers : function(gpu, renderBin)
                 {
-                    textureAsset.bind(renderBin.program, "u_emissive");
-                    localsBuffer.bindUniformBlock(0, renderBin.program)
+                    textureAsset.bind(renderBin.program, "t_emissive");
+                    myBlock.bind(renderBin.program);
+                    //localsBuffer.bindUniformBlock(0, renderBin.program)
                 }
             };
         }
@@ -64,7 +65,7 @@ class RenderQuad extends RenderDemo
             ],
             bindBuffers : function() 
             {
-                globalsBuffer.bindUniformBlock(0, this.program);
+                globalBlock.bind(this.program);
             }
         };
     

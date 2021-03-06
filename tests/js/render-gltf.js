@@ -1,7 +1,7 @@
-import { DefaultAttributes } from "../buff/attribute.js";
-import { RasterProgram } from "../buff/program.js";
-import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
-import { mat4 } from "../math/index.js";
+import { DefaultAttributes } from "../../src/buff/attribute.js";
+import { RasterProgram } from "../../src/buff/program.js";
+import { ShaderSimpleTexture } from "../../src/buff/shader-mods/simple-texture.js";
+import { mat4 } from "../../src/math/index.js";
 import { RenderDemo } from "./render-demo.js";
 
 class RenderGLTF extends RenderDemo
@@ -12,7 +12,7 @@ class RenderGLTF extends RenderDemo
      
         const program = new RasterProgram(gpu, DefaultAttributes, [ShaderSimpleTexture]);
 
-        var textureAsset = textureManager.fromUrl("test-image.png");
+       var textureAsset = textureManager.fromUrl("test-image.png");
 
         //gltfManager.fromUrl("gltf/build/cubepack.gltf");
         const gltfAsset = gltfManager.fromUrl("gltf/src/cube.gltf");
@@ -20,10 +20,7 @@ class RenderGLTF extends RenderDemo
         gltfAsset.getPromise().then(gltfAsset => {
     
             const gltf = gltfAsset.gltf;
-            const geometry = gltf.meshes[0].primitives[0];
-            
-            
-            const geoBinding = gpu.createGeometryBinding(geometry.vertexLayout, geometry.indexLayout);
+
             
             const localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
             const myBlock = localsBuffer.getBlock(0);
@@ -33,22 +30,42 @@ class RenderGLTF extends RenderDemo
             const globalBlock = globalsBuffer.getBlock(0);
             mat4.identity(globalBlock.viewProjection);
     
-       
+            
+            const meshes = [];
+
+            gltf.meshes.forEach(mesh => {
+                mesh.primitives.forEach(prim => {
+                    meshes.push({
+                        binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout),
+                        numInstances: 0,
+                        bindBuffers: function(gpu, renderBin)
+                        {
+                            //textureAsset.bind(renderBin.program, "t_baseColor", 0);
+                            prim.material.bindTextures(gpu, renderBin.program);
+                            localsBuffer.bindUniformBlock(0, renderBin.program)
+                        }
+                    })
+                })
+            })
+
+            /*
+            const geometry = gltf.meshes[0].primitives[0]; 
+            const geoBinding = 
+            
+
             const mesh = {
                 binding : geoBinding,
                 numInstances: 0,
                 bindBuffers: function(gpu, renderBin)
                 {
-                    textureAsset.bind(renderBin.program, "u_emissive");
+                    textureAsset.bind(renderBin.program, "t_emissive");
                     localsBuffer.bindUniformBlock(0, renderBin.program)
                 }
-            }
+            }*/
 
             const triRenderBin = {
                 program : program,
-                meshes : [
-                    mesh
-                ],
+                meshes : meshes,
                 bindBuffers : function() 
                 {
                     mat4.multiply(globalBlock.viewProjection, camera.projection, camera.view);

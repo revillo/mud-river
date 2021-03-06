@@ -30,6 +30,10 @@ class AttributeLayoutGenerator
     {
         this.instanceAttributes = instanceAttributes;
         this.vertexAttribtues = vertexAttribtues;
+
+        /**
+         * @type {Map<string, AttributeLayout>}
+         */
         this.layout = {};
     }
 
@@ -45,7 +49,7 @@ class AttributeLayoutGenerator
             {
                 const attribute = attributes[attributeName];
                 const type = attribute.type;
-                stride += type.bytes;
+                stride += type.sizeBytes;
             }
         }
 
@@ -66,7 +70,7 @@ class AttributeLayoutGenerator
                 instanced : instances
             }
             
-            offset += type.bytes;
+            offset += type.sizeBytes;
         }
     }
 

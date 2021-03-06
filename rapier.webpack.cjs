@@ -1,11 +1,11 @@
 
 const path = require("path");
-const dist = path.resolve(__dirname, "src/rapier");
+const dist = path.resolve(__dirname, "lib/rapier");
 
 module.exports = {
 
 
-    entry: "./src/rapier.js",
+    entry: "./lib/rapier.js",
 
     optimization : {
         minimize: true
