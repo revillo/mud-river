@@ -1,3 +1,20 @@
+export class Lifetime
+{
+    constructor()
+    {
+        var thiz = this;
+
+        this._promise = new Promise((res, rej) => {
+            thiz.end = rej;
+        });
+    }
+
+    get promise()
+    {
+        return this._promise;
+    }
+}
+
 export class Asset
 {
     constructor(manager)
@@ -6,6 +23,11 @@ export class Asset
         this.isLoaded = false;
         this.error = false;
         this.isOnGPU = false;
+    }
+
+    safePromise(lifetime)
+    {
+        return Promise.race([this.promise, lifetime.promise]);
     }
 
     getPromise()

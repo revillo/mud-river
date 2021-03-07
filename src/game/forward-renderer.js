@@ -11,7 +11,7 @@ export class ForwardRenderer
         this.gpu = gameContext.gpu;
         this.canvas = this.gpu.canvas;
         this.aspect = this.canvas.width / this.canvas.height;
-        this.clearColor = {r: 0, g: 0, b: 0, a: 1}
+        this.clearColor = {r: 0.3, g: 0.3, b: 0.3, a: 1}
 
         this.globalsBuffer = gameContext.bufferManager.allocUniformBlockBuffer("Globals", 1, {
             viewProjection : ShaderValueType.MAT4
@@ -25,12 +25,11 @@ export class ForwardRenderer
         mat4.identity(this.globalBlock.viewProjection);
 
         this.renderView = gameContext.with(ModelRender);
+
+        gameContext.renderer = this;
     }
 
-    set mainCameraEntity (entity)
-    {
-        this._mainCameraEntity = entity;
-    }
+
 
     bindGlobals(program)
     {
@@ -43,13 +42,9 @@ export class ForwardRenderer
         this.gpu.clear(this.clearColor);
         this.gpu.setViewport(0, 0, this.canvas.width, this.canvas.height);
 
-        let camera = this._mainCameraEntity.get(Camera);
-        let camTrans = this._mainCameraEntity.get(Transform);
-        camTrans.updateLocal();
-
-        mat4.perspective(this.projectionMatrix, camera.fovY, this.aspect, 0.1, 100);
+        mat4.perspective(this.projectionMatrix, this.mainCamera.fovY, this.aspect, 0.1, 100);
         
-        mat4.invert(this.viewMatrix, camTrans.localMatrix);
+        this.mainCamera.getViewMatrix(this.viewMatrix);
         
         mat4.multiply(this.globalBlock.viewProjection, this.projectionMatrix, this.viewMatrix);
 

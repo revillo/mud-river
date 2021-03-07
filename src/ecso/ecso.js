@@ -14,6 +14,14 @@ export class Entity
         }
     }
 
+    _destroyComponents()
+    {
+        for (let component of this.components.values())
+        {
+            component.destroy && component.destroy();
+        }
+    }
+
     get(Component)
     {
         return this.components.get(Component);
@@ -24,7 +32,7 @@ export class Entity
         var res = true;
         for (let C of Components)
         {
-            res &= C.prototype ? (!!this.get(C)) : this._context.has(this, C);
+            res &= C.prototype ? (this.components.has(C)) : this._context.has(this, C);
         }
         return res;
     }
@@ -87,19 +95,22 @@ export class GameEntity extends Entity
         }
     }
 
+    /*
     on(eventName, listener)
     {
         this._inputListeners = this._inputListeners || new Map();
         this._inputListeners.set(eventName, listener);
         this.context.eventManager.addListener(eventName, listener);
-    }
+    }*/
 
     destroy()
     {
         super.destroy();
 
-        //todo destroy children, update parent
+        this.parent = null;
+        this.eachChild(child => child.destroy(), true);
 
+        /*
         if (this._inputListeners)
         {
             for (let [name,listener] of this._inputListeners)
@@ -109,6 +120,7 @@ export class GameEntity extends Entity
         }
 
         delete this._inputListeners;
+        */
     }
 }
 
@@ -127,9 +139,26 @@ export class EntityPool
     {
         this.sets.set(Component, new Set());
 
+        //todo make this a mixin
         if (Component.selfAware)
         {
-            Component.prototype.my = function(Component)
+            Component.prototype.get = function(Component)
+            {
+                return this._entity.get(Component);
+            }
+
+            Component.prototype.ensure = function(...Components)
+            {
+                for (let C of Components)
+                {
+                    if (!this._entity.has(C))
+                    {
+                        this._entity.add(C);
+                    }
+                }
+            }
+
+            Component.prototype.has = function(Component)
             {
                 return this._entity.get(Component);
             }
@@ -163,12 +192,21 @@ export class EntityPool
         }
     }
 
+    _add(entity, C)
+    {
+        this.sets.get(C).add(entity);
+        if (C.prototype)
+        {
+            entity.components.set(C, new C());
+            C.selfAware && (entity.get(C)._entity = entity);
+        }
+    }
+
     add(entity, Component)
     {
         this.ensure(Component);
         this.sets.get(Component).add(entity);
-        //todo match create
-        entity.components.set(Component, Component.prototype ? new Component() : Component)
+        this._add(entity, Component);
     }
 
     remove(entity, Component)
@@ -178,6 +216,10 @@ export class EntityPool
         {
             set.delete(entity);
         }
+
+        let c = entity.get(Component);
+        c && c.destroy && c.destroy();
+
         entity.components.delete(Component);
     }
 
@@ -185,15 +227,9 @@ export class EntityPool
     {
         this.ensure(...Components);
         let entity = this.discarded.pop() || new this.EntityType(this);
-        const sets = this.sets;
         for (let C of Components)
         {
-            sets.get(C).add(entity);
-            if (C.prototype)
-            {
-                entity.components.set(C, new C());
-                C.selfAware && (entity.get(C)._entity = entity);
-            }
+            this._add(entity, C);
         }
 
         entity._startComponents();
@@ -205,12 +241,12 @@ export class EntityPool
 
     free(entity)
     {
-        //todo destroy components
         const sets = this.sets;
         for (let C of entity.components.keys())
         {
             sets.get(C).delete(entity);
         }
+        entity._destroyComponents();
         entity.components.clear();
         this.discarded.push(entity);
         this.size--;

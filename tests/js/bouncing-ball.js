@@ -123,6 +123,10 @@ var start = function()
     {
         physWorld.step();
 
+        const collider = physWorld.world.colliders.get(0);
+
+        const trans = collider.translation();
+        
         var t = physWorld.world.colliders.get(0).translation();
         var r = physWorld.world.colliders.get(0).rotation();
         //mat4.fromTranslation(triangleMesh.worldTransform, [t.x, t.y, t.z]);

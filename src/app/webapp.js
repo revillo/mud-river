@@ -10,6 +10,11 @@ export class WebApp extends App
         document.title = title;
 
         this.timer = new Timer();
+                  
+        this.mainCanvas = document.createElement("canvas");
+        document.body.appendChild(this.mainCanvas);
+
+        
         this._addEvents(['load', 'resize', 'mousewheel', 'mouseup', 'mousedown', 'mousemove', 'keydown', 'keyup']);
         this.gameClock = 0;
         this.docLoaded = false;
@@ -18,13 +23,10 @@ export class WebApp extends App
 
         if (document.readyState === "complete")
         {
-            //this.dispatch('on_load', {});
+            this.docLoaded = true;
         }
 
-                
-        this.mainCanvas = document.createElement("canvas");
-        document.body.appendChild(this.mainCanvas);
-
+      
         this.on_resize();
     }
 
@@ -74,10 +76,11 @@ export class WebApp extends App
     }
 
     on_load()
-    {
-        this.docLoaded = true;
+    {       
         if (this.startRequest)
-        {
+        { 
+            this.startRequest = false;
+            this.docLoaded = true;
             this.start();
         }
     }

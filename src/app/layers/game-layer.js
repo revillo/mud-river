@@ -4,7 +4,7 @@ export class GameLayer
 {
     constructor(gameContext)
     {
-        this.inputLayer = new InputLayer(gameContext.eventManager);
+        this.inputLayer = new InputLayer(gameContext);
         this.context = gameContext;
         this.canvas = gameContext.canvas;
         gameContext.inputManager = this.inputLayer;

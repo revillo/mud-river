@@ -348,6 +348,23 @@ export function normalize(out, a) {
 }
 
 /**
+ * Normalize a vec3 in place
+ */
+export function setUnit(inout)
+{
+  normalize(inout, inout);
+}
+
+export function setLength(inout, f)
+{
+  const l = length(inout);
+  if (l)
+  {
+    scale(inout, inout, f/l);
+  }
+}
+
+/**
  * Calculates the dot product of two vec3's
  *
  * @param {ReadonlyVec3} a the first operand
@@ -511,6 +528,24 @@ export function transformMat4(out, a, m) {
   out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
   out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
   out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+  return out;
+}
+
+/**
+ * Rotates a vector by mat4 by transforming with w = 0
+ * @param {vec3} out 
+ * @param {vec3} a 
+ * @param {mat4} m 
+ */
+export function rotateMat4(out, a, m)
+{
+  let x = a[0],
+  y = a[1],
+  z = a[2];
+
+  out[0] = (m[0] * x + m[4] * y + m[8] * z);
+  out[1] = (m[1] * x + m[5] * y + m[9] * z);
+  out[2] = (m[2] * x + m[6] * y + m[10] * z);
   return out;
 }
 

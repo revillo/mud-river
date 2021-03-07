@@ -43,6 +43,7 @@ export class GameContext extends EntityPool
         this.eventManager = new EventManager;
         this.canvas = canvas;
 
+        //todo share between contexts
         if (this.canvas)
         {
             this.gpu = new GPUContext(canvas);
@@ -53,12 +54,20 @@ export class GameContext extends EntityPool
             this.programManager = new ProgramManager(this.gpu);
         }
 
+        this.PHYSICS = window.RAPIER;
+
+        this.PHYSICS.tempVec3 = new this.PHYSICS.Vector3(0.0, 0.0, 0.0);
+
         this.updaters = new Map();
+        let gravity = new this.PHYSICS.Vector3(0.0, -9.81, 0.0);
+        this.physicsWorld = new this.PHYSICS.World(gravity);         
     }
 
     addNewType(Component)
     {
         super.addNewType(Component);
+
+        if (!Component.prototype) return;
 
         if (Component.prototype.update)
         {
@@ -73,6 +82,52 @@ export class GameContext extends EntityPool
             {
                 return inputManager.isPressed(action);
             }
+
+            Object.defineProperty(Component.prototype, "inputManager", {
+                get : function() {return inputManager}
+            });
+
+            
+            Component.prototype.bindInput = function(action, handler)
+            {
+                this._inputListeners = this._inputListeners || [];
+                handler = handler.bind(this);
+
+                this._inputListeners.push({action, handler});
+                inputManager.addListener(action, handler);
+            }
+
+            Component.prototype.unbindInputs = function()
+            {
+                for (let listener of (this._inputListeners || []))
+                {
+                    inputManager.removeListener(listener.action, listener.handler);
+                }
+            }
+
+            Component.prototype.addInputListener = function(action, handler)
+            {
+                inputManager.addListener(action, handler);
+            }
+
+            Component.prototype.removeInputListener = function(action, handler)
+            {
+                inputManager.removeListener(action, handler);
+            }
+        }
+
+        const PHYSICS = this.PHYSICS;
+        const physicsWorld = this.physicsWorld;
+
+        if (Component.physicsAware)
+        {
+            Object.defineProperty(Component.prototype, "PHYSICS", {
+                get : function() {return PHYSICS}
+            })
+            
+            Object.defineProperty(Component.prototype, "physicsWorld", {
+                get : function() {return physicsWorld}
+            })
         }
     }
 
@@ -83,6 +138,9 @@ export class GameContext extends EntityPool
 
     update(dt, clock)
     {
+        this.physicsWorld.timestep = dt;
+        this.physicsWorld.step();
+
         for (let [Type, view] of this.updaters)
         {
             view(e => {

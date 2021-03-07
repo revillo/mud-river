@@ -2,9 +2,25 @@ import { vec3 } from "../../math/index.js";
 
 const DefaultBindings =
 {
-    mousedown : (event) => new Event('Use', {x : event.screenX, y: event.screenY}),
+    /*
+    mousedown : (event) => {
+        if (event.button == 0) return new Event('Use', {x : event.screenX, y: event.screenY}) 
+        event.button == 0 ? 
+    },
+
     mouseup : (event) => new Event('Use Release', {x : event.screenX, y: event.screenY}),
-    mousemove : (event) => new Event('Aim', {dx : event.movementX, dy: event.movementY, x : event.screenX, y : event.screenY}),
+    */
+
+    //mousemove : (event) => new Event('Aim', {dx : event.movementX, dy: event.movementY, x : event.screenX, y : event.screenY}),
+    
+    mouse_move : "Aim",
+
+    mouse_buttons:
+    {
+        0 : "Use",
+        2 : "Look"
+    },
+
     keys : 
     {
         w: "Forward",
@@ -17,11 +33,18 @@ const DefaultBindings =
 
 export class InputLayer
 {
-    constructor(eventManager, bindings = DefaultBindings)
+    constructor(context, bindings = DefaultBindings)
     {
         this.bindings = bindings;
         this.buttonTracker = new Set();
-        this.eventManager = eventManager;
+        this.gameContext = context;
+        this.eventManager = context.eventManager;
+        this.canvas = context.canvas;
+
+        
+        this.canvas.requestPointerLock = this.canvas.requestPointerLock || this.canvas.mozRequestPointerLock;
+        document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
+
     }
 
     isPressed(action)
@@ -32,6 +55,20 @@ export class InputLayer
     setBindings(bindings)
     {
         this.bindings = bindings;
+    }
+
+    setPointerLock(toggle)
+    {
+        const canvas = this.canvas;
+
+        if (toggle)
+        {
+            canvas.requestPointerLock()
+        }
+        else
+        {
+            document.exitPointerLock();
+        }
     }
 
     addListener(eventName, listener)
@@ -49,36 +86,75 @@ export class InputLayer
         this.eventManager.dispatchEvent(event);
     }
 
+    dispatchAction(name, data)
+    {
+        let e = new Event(name);
+        Object.assign(e, data);
+        this.dispatchEvent(e);
+    }
+
     on_mousedown(e)
     {
-        this.dispatchEvent(this.bindings.mousedown(e));
+        const action = this.bindings.mouse_buttons[e.button]
+        if (action)
+        {
+            this.buttonTracker.add(action);
+            this.dispatchAction(action, {
+                x : e.screenX / this.canvas.width,
+                y : e.screenY / this.canvas.height,
+                isPressed : true
+            });
+
+            e.preventDefault();
+        }
         return true;
     }
 
     on_mouseup(e)
     {
-        this.dispatchEvent(this.bindings.mouseup(e));
+        const action = this.bindings.mouse_buttons[e.button]
+        if (action)
+        {
+            this.buttonTracker.delete(action);
+            this.dispatchAction(action, {
+                x : e.screenX / this.canvas.width,
+                y : e.screenY / this.canvas.height,
+                isPressed : false
+            });
+        }
         return true;
     }
 
     on_mousemove(e)
     {
-        this.dispatchEvent(this.bindings.mousemove(e));
+        const action = this.bindings.mouse_move;
+
+        if (action)
+        {
+            this.dispatchAction(action, {
+                dx : e.movementX / this.canvas.width,
+                dy : e.movementY / this.canvas.height,
+                x : e.screenX / this.canvas.width,
+                y : e.screenY / this.canvas.height
+            });
+        }
+
         return true;
     }
+
+
     
     on_keydown(e)
     {
-        //this.dispatch(this.bindings.keydown(e));
-
         const action = this.bindings.keys[e.key];
 
         if (action)
         {
             this.buttonTracker.add(action);
-            this.dispatchEvent(new Event("Press " + action));
+            this.dispatchAction(action, {
+                isPressed : true
+            });
         }
-        //this.keyTracker[e.key] = 1;
         return true;
     }
 
@@ -88,10 +164,10 @@ export class InputLayer
         if (action)
         {
             this.buttonTracker.delete(action);
-            this.dispatchEvent(new Event("Release " + action));
+            this.dispatchAction(action, {
+                isPressed : false
+            });
         }
-        //this.dispatch(this.bindings.keyup(e));
-        //this.keyTracker[e.key] = 0;
         return true;
     }
 

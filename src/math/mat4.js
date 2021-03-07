@@ -2178,3 +2178,32 @@ export const mul = multiply;
  * @function
  */
 export const sub = subtract;
+
+
+export function setTranslation(out, v) {
+  out[12] = v[0];
+  out[13] = v[1];
+  out[14] = v[2];
+}
+
+const tempScale = new Float32Array(3);
+const tempTranslate = new Float32Array(3);
+const tempRotate = new Float32Array(4);
+
+export function setRotation(inout, q) {
+  getScaling(tempScale, inout);
+  getTranslation(tempTranslate, inout);
+  fromRotationTranslationScale(inout, q, tempTranslate, tempScale);
+}
+
+export function setScale(inout, s) {
+  getTranslation(tempTranslate, inout);
+  getRotation(tempRotate, inout);
+  fromRotationTranslationScale(inout, tempRotate, tempTranslate, s);
+}
+
+export function setTranslationRotation(inout, p, q)
+{
+  getScaling(tempScale, inout);
+  fromRotationTranslationScale(inout, q, p, tempScale);
+}

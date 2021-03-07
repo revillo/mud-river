@@ -1,3 +1,4 @@
+import { Lifetime } from "../assets/assets.js";
 import { DefaultAttributes } from "../buff/attribute.js";
 import { RasterProgram } from "../buff/program.js";
 import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
@@ -8,11 +9,10 @@ export class ModelRender
 {
     asset = null;
     renderables = [];
+    lifetime = new Lifetime;
 
     _loadGltfAsset(gltfAsset)
     {
-        //todo modify asset loading to allow unlistening
-        
         const {gpu, bufferManager, programManager} = this.context;
         this.gpu = gpu;
         const programAsset = programManager.fromMods(ShaderSimpleTexture);
@@ -51,15 +51,14 @@ export class ModelRender
             return;
         }
 
-        gltfAsset.getPromise().then(this._loadGltfAsset.bind(this));
+        gltfAsset.safePromise(this.lifetime).then(this._loadGltfAsset.bind(this));
     }
 
     render(target)
     {
         const gpu = this.gpu;
 
-        const transform = this.my(Transform);
-        transform.updateLocal();
+        const transform = this.get(Transform);
 
         this.renderables.forEach(mesh => {
 
@@ -67,13 +66,18 @@ export class ModelRender
             mesh.program.use();
             target.bindGlobals(mesh.program);
 
-            mat4.copy(mesh.locals.model, transform.localMatrix);
+            mat4.copy(mesh.locals.model, transform.matrix);
 
             //mat4.fromRotationTranslationScale(mesh.locals.getBlock(mesh.blockIndex).model, );
             mesh.material.bindTextures(gpu, mesh.program);
             mesh.locals.bind(mesh.program)
             gpu.rasterizeMesh(mesh.binding, mesh.numInstances);        
         });
+    }
+
+    destroy()
+    {
+        this.lifetime.end();
     }
 }
 
