@@ -59,7 +59,6 @@ export class GPUContext
         const gl = this.gl;
 
         gl.enable(gl.DEPTH_TEST);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         
         //1 && 2
         this.extensions = {

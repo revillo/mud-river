@@ -41,8 +41,8 @@ var start = function()
         const sphereGeometry = sphere.createGeometry();
 
         const binding = bufferManager.createGeometryBinding(sphereGeometry, 
-            [DefaultAttributes.position, DefaultAttributes.normal, DefaultAttributes.uv0], 
-            [DefaultAttributes.instanceMatrix],
+            [DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0], 
+            [DefaultAttributes.INSTANCE_MATRIX],
             instanceBB.getInstanceBufferView()
         );
   

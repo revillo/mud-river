@@ -22,6 +22,11 @@ export class Transform
         mat4.getScaling(scaleOut, this.matrix);
     }
 
+    setMatrix(m)
+    {
+        mat4.copy(this.matrix, m);
+    }
+
     reset()
     {
         mat4.identity(this.matrix);
@@ -30,6 +35,13 @@ export class Transform
     compose(position, rotation, scale)
     {
         mat4.fromRotationTranslationScale(this.matrix, rotation, position, scale);
+    }
+
+    decompose(outTranslation, outRotation, outScale)
+    {
+        mat4.getScaling(outScale, this.matrix);
+        outRotation && mat4.getRotation(outRotation, this.matrix);
+        outScale && mat4.getTranslation(outTranslation, this.matrix);
     }
 
     preTranslate(translation)
@@ -74,4 +86,25 @@ export class Transform
         vec3.rotateMat4(inout, inout, this.matrix);
     }
 
+    //todo optimize
+    getWorldMatrix(out)
+    {
+        var parent = this.parent;
+        while(parent && !parent.has(Transform))
+        {
+            parent = parent.parent;
+        }
+
+        if (parent && parent.has(Transform))
+        {
+            parent.get(Transform).getWorldMatrix(out);
+            mat4.multiply(out, out, this.matrix); 
+        }
+        else
+        {
+            mat4.copy(out, this.matrix);
+        }
+    }
 }
+
+Transform.selfAware = true;

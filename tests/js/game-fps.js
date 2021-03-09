@@ -20,22 +20,35 @@ let start = () => {
 
     //Scene
     let cube = gameContext.create(ModelRender, Transform, Body);
-    cube.get(ModelRender).setAsset(gltfManager.fromUrl("gltf/src/cube.gltf"));
-    cube.get(Transform).setPosition(0.0, 0.0, -4.0);
-    cube.get(Body).configure(Body.STATIC)
-    cube.get(Body).addCollider(PHYSICS.ColliderDesc.cuboid(1, 1, 1));
 
+    let startAsset = gltfManager.fromUrl("gltf/scene/scene.gltf");
+
+    cube.get(Transform).setPosition(0, -1, -5);
+    cube.get(ModelRender).setAsset(startAsset);
+    cube.get(Body).configure(Body.STATIC)
+    cube.get(Body).setAsset(startAsset);
+    /*
+    cube.get(Body).addCollider(PHYSICS.ColliderDesc.cuboid(1, 1, 1)
+        .setCollisionGroups(PHYSICS.getCollisionGroups([PHYSICS.GROUP_STATIC], [PHYSICS.GROUP_DYNAMIC, PHYSICS.GROUP_PLAYER])));
+    */
+
+    /*
     let floor = gameContext.create(Transform, Body);
-    floor.get(Body).type = Body.STATIC;
-    floor.get(Body).addCollider(PHYSICS.ColliderDesc.cuboid(100, 1.0, 100).setTranslation(0, -1.0, 0.0))
+    floor.get(Body).configure(Body.STATIC);
+    floor.get(Body).addCollider(PHYSICS.ColliderDesc.cuboid(100, 1.0, 100).setTranslation(0, -1.0, 0.0)
+        .setCollisionGroups(PHYSICS.getCollisionGroups([PHYSICS.GROUP_STATIC], [PHYSICS.GROUP_DYNAMIC, PHYSICS.GROUP_PLAYER])));
+    */
 
     //let player = gameContext.create(FreeController, Camera, Transform);
-    let player = gameContext.create(CharacterController);
-    player.get(Camera).transform.setPosition(0, 1, 0);
 
-    //Renderer
-    let renderer = new ForwardRenderer(gameContext);
-    renderer.mainCamera = player.get(Camera);
+    startAsset.getPromise().then(() => {
+        let player = gameContext.create(CharacterController);
+
+        //Renderer
+        let renderer = new ForwardRenderer(gameContext);
+        renderer.mainCamera = player.get(CharacterController).camera.get(Camera);
+    
+    });
 
     app.start();
 }

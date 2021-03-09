@@ -1,3 +1,4 @@
+import { Lifetime } from "../assets/assets.js";
 import { mat4, quat, vec3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 
@@ -10,6 +11,7 @@ export class Body
     colliders = [];
     _type = Body.DISABLED;
     _body = null;
+    lifetime = new Lifetime;
 
     options = {
         lockRotations : false
@@ -50,6 +52,7 @@ export class Body
         if (this._body)
         {
             this.physicsWorld.removeRigidBody(this._body);
+            this._body = null;
         }
 
         var desc;
@@ -81,6 +84,8 @@ export class Body
 
             this.syncTransformToBody();
         }
+
+        //todo recreate colliders
     }
 
     addCollider(colliderDesc)
@@ -137,7 +142,7 @@ export class Body
 
     applyForce(force)
     {
-        const tvec3 = this.PHYSICS.tempVec3;
+        const tvec3 = this.PHYSICS.vec3_0;
         tvec3.x = force[0];
         tvec3.y = force[1];
         tvec3.z = force[2];
@@ -145,14 +150,83 @@ export class Body
         this._body.applyForce(tvec3, true);
     }
 
+    setLinearDamping(damping)
+    {
+        this._body.setLinearDamping(damping);
+    }
+
     applyImpulse(impulse)
     {
-        const tvec3 = this.PHYSICS.tempVec3;
+        const tvec3 = this.PHYSICS.vec3_0;
         tvec3.x = impulse[0];
         tvec3.y = impulse[1];
         tvec3.z = impulse[2];
 
         this._body.applyImpulse(tvec3, true);
+    }
+
+    setAsset(gltfAsset)
+    {
+        gltfAsset.safePromise(this.lifetime).then(this._processGltfAsset.bind(this));
+    }
+
+    _processGltfAsset(gltfAsset)
+    {
+        const P = this.PHYSICS;
+        const gltf = gltfAsset.gltf;
+        const world = this.physicsWorld;
+        const body = this._body;
+
+        function nodeHelper(node)
+        {
+            if (node.mesh)
+            {
+                const mesh = gltf.meshes[node.mesh];
+
+                mat4.getTranslation(tempVec3, node.matrix);
+                mat4.getRotation(tempQuat, node.matrix);
+
+                node.mesh.primitives.forEach(prim => {
+                    if (prim.verticesPhys)
+                    {
+                        let colliderDesc = P.ColliderDesc.trimesh(prim.verticesPhys, prim.indicesPhys);
+                    
+
+                        if (node.translation)
+                        {
+                            colliderDesc.setTranslation(tempVec3[0], tempVec3[1], tempVec3[2]);
+                        }
+
+                        if (node.rotation)
+                        {
+                            colliderDesc.setRotation(tempQuat[0], tempQuat[1], tempQuat[2], tempQuat[3]);
+                        }
+
+                        colliderDesc.setCollisionGroups(P.getCollisionGroups([P.GROUP_STATIC], [P.GROUP_DYNAMIC, P.GROUP_PLAYER]));
+
+                       world.createCollider(colliderDesc, body.handle);
+                
+                    }
+                });
+            }
+
+            if (node.children)
+                node.children.forEach(nodeHelper);
+        }
+
+        gltf.scenes[0].nodes.forEach(nodeHelper)
+    }
+
+    destroy()
+    {
+        this.lifetime.end();
+
+        if (this._body)
+        {
+            this.physicsWorld.removeRigidBody(this._body);
+            this._body = null;
+        }
+
     }
 }
 

@@ -6,11 +6,10 @@ export class Camera
 {
     //viewMatrix = mat4.create();
     fovY = toRadian(60);
-    transform = new Transform();
 
     getViewMatrix(outMat4)
     {
-        mat4.multiply(outMat4, this.get(Transform).matrix, this.transform.matrix);
+        this.get(Transform).getWorldMatrix(outMat4);
         mat4.invert(outMat4, outMat4);
     }
 }

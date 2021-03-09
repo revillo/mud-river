@@ -2,14 +2,15 @@ import { ShaderValueType } from "./gpu-types.js";
 
 const DefaultAttributes = 
 {
-     position : {id: "a_position", type: ShaderValueType.VEC3}
-    ,normal : {id: "a_normal", type: ShaderValueType.VEC3}
-    ,uv0 : {id: "a_uv0", type: ShaderValueType.VEC2}
-    ,uv1 : {id: "a_uv1", type: ShaderValueType.VEC2}
-    ,boneWeights : {id: "a_boneWeights", type: ShaderValueType.VEC4}
-    ,boneIndices : {id: "a_boneIndices", type: ShaderValueType.IVEC4}
-    ,instanceMatrix : {id : "a_instanceMatrix", type : ShaderValueType.MAT4}
-    ,instanceColor : {id : "a_instanceColor", type : ShaderValueType.VEC4}
+     POSITION : {id: "a_position", type: ShaderValueType.VEC3}
+    ,NORMAL : {id: "a_normal", type: ShaderValueType.VEC3}
+    ,UV0 : {id: "a_uv0", type: ShaderValueType.VEC2}
+    ,UV1 : {id: "a_uv1", type: ShaderValueType.VEC2}
+    ,TANGENT : {id: "a_tangent", type: ShaderValueType.VEC3}
+    ,BONE_WEIGHTS : {id: "a_boneWeights", type: ShaderValueType.VEC4}
+    ,BONE_INDICES : {id: "a_boneIndices", type: ShaderValueType.IVEC4}
+    ,INSTANCE_MATRIX : {id : "a_instanceMatrix", type : ShaderValueType.MAT4}
+    ,INSTANCE_COLOR : {id : "a_instanceColor", type : ShaderValueType.VEC4}
 }
 
 function ComputeLocations()

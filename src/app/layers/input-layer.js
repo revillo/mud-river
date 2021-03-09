@@ -107,7 +107,7 @@ export class InputLayer
 
             e.preventDefault();
         }
-        return true;
+        return !!action;
     }
 
     on_mouseup(e)
@@ -121,8 +121,10 @@ export class InputLayer
                 y : e.screenY / this.canvas.height,
                 isPressed : false
             });
+            e.preventDefault();
         }
-        return true;
+
+        return !!action;
     }
 
     on_mousemove(e)

@@ -1,14 +1,15 @@
 import { DefaultAttributes } from "../buff/attribute.js";
 import { BufferType, BufferUsage, ShaderValueType } from "../buff/gpu-types.js";
+import { mat4 } from "../math/index.js";
 import { prune } from "../util/object.js";
 import { Asset, AssetManager } from "./assets.js";
 
 const GLTFAttribute =
 {
-    POSITION : DefaultAttributes.position,
-    NORMAL : DefaultAttributes.normal,
-    TEXCOORD_0 : DefaultAttributes.uv0,
-    TEXCOORD_1 : DefaultAttributes.uv1
+    POSITION : DefaultAttributes.POSITION,
+    NORMAL : DefaultAttributes.NORMAL,
+    TEXCOORD_0 : DefaultAttributes.UV0,
+    TEXCOORD_1 : DefaultAttributes.UV1
 }
 
 const GLTFType =
@@ -50,6 +51,7 @@ export class GLTFAsset extends Asset
             .then(gltf => thiz.processAccessors(gltf))
             .then(gltf => thiz.processMaterials(gltf))
             .then(gltf => thiz.processMeshes(gltf))
+            .then(gltf => thiz.processScene(gltf))
             .then(gltf => {
                 thiz.gltf = gltf;
                 return Promise.resolve(thiz);
@@ -59,6 +61,48 @@ export class GLTFAsset extends Asset
             })
         
         return this;
+    }
+
+    processScene(gltf)
+    {
+        
+        function nodeHelper(nodeIndex, i, array, parentMatrix)
+        {
+            const node = gltf.nodes[nodeIndex];
+            array[i] = node;
+
+            if (node.mesh == undefined && !node.children) return;
+
+            node.matrix = mat4.create();
+
+            if (node.translation)
+            {
+                mat4.setTranslation(node.matrix, node.translation);
+            }
+
+            if (node.rotation)
+            {
+                mat4.setRotation(node.matrix, node.rotation);
+            }
+
+            mat4.multiply(node.matrix, parentMatrix, node.matrix);
+
+            if (node.mesh != undefined)
+            {
+                node.mesh = gltf.meshes[node.mesh];
+            }
+
+            if (node.translation);
+
+            if (node.children)
+            {
+                node.children.forEach((nodeIndex, index) => nodeHelper(nodeIndex, index, node.children, node.matrix));
+            }
+        }
+
+        gltf.scenes[0].nodes.forEach((nodeIndex, index) => nodeHelper(nodeIndex, index, gltf.scenes[0].nodes, mat4.create()));
+
+        return Promise.resolve(gltf);
     }
 
     processMaterials(gltf)
@@ -102,6 +146,8 @@ export class GLTFAsset extends Asset
     processMeshes(gltf)
     {
         const bufferManager = this.manager.bufferManager;
+        const thiz = this;
+        let primId = 0;
 
         gltf.meshes.forEach(mesh => {
             mesh.primitives.forEach(primitive => {
@@ -111,10 +157,12 @@ export class GLTFAsset extends Asset
                  */
                 primitive.vertexLayout = {};
                 primitive.material = gltf.materials[primitive.material];
+                primitive.id = primId++;
 
                 for (var attribName in primitive.attributes)
                 {
                     const accessor = gltf.accessors[primitive.attributes[attribName]];
+                    
                     const myAttribute = GLTFAttribute[attribName];
 
                     const bv = accessor.bufferView;
@@ -149,12 +197,40 @@ export class GLTFAsset extends Asset
                     type : indexAccessor.componentType,
                     start : ibv.gpuView.offset / GLTFIndexType[indexAccessor.componentType].size,
                 }
+
+                thiz.createPrimitiveCollisonData(gltf, primitive);
+
             })
         });
 
         return Promise.resolve(gltf);
     }
 
+    createPrimitiveCollisonData(gltf, prim)
+    {
+        if(prim.attributes.POSITION != undefined)
+        {
+            //Positions
+            const positionAccessor = gltf.accessors[prim.attributes.POSITION];
+            let u8Buffer = positionAccessor.bufferView.cpuBuffer;
+
+            prim.verticesPhys = new Float32Array(u8Buffer.buffer, u8Buffer.byteOffset, u8Buffer.byteLength/4);
+            //todo handle non-float vertices
+            
+            //Indices
+            const indexAccessor = gltf.accessors[prim.indices];
+            u8Buffer = indexAccessor.bufferView.cpuBuffer;
+            if(indexAccessor.componentType != 5125)
+            {
+                prim.indicesPhys = new Uint32Array(u8Buffer);
+            }
+            else
+            {
+                prim.indicesPhys = new Uint32Array(u8Buffer.buffer, u8Buffer.byteOffset, u8Buffer.byteLength/4);
+            }
+        }
+
+    }
 
     createBufferViews(gltf)
     {
@@ -162,7 +238,7 @@ export class GLTFAsset extends Asset
 
         gltf.bufferViews.forEach(view => {
 
-            view.cpuBuffer = new Uint8Array(gltf.cpuBuffers[view.buffer], view.byteOffset, view.byteLength);
+            view.cpuBuffer = new Uint16Array(gltf.cpuBuffers[view.buffer], view.byteOffset, view.byteLength/2);
 
             if (view.target)
             {

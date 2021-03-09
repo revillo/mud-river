@@ -5,6 +5,43 @@ import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
 import { mat4 } from "../math/index.js";
 import { Transform } from "./transform.js";
 
+var once = false;
+
+export class PrimRender
+{
+
+    setPrim(prim)
+    {
+        this.prim = prim;
+    }
+
+    render(target)
+    {
+        const prim = this.prim;
+        const program = prim.program;
+        program.use();
+        target.bindGlobals(program);        
+        this.get(Transform).getWorldMatrix(prim.locals.model);
+        prim.material.bindTextures(target.gpu, program);
+        prim.locals.bind(program)
+        target.gpu.rasterizeMesh(prim.binding, prim.numInstances);        
+
+        if (!once)
+        {
+            console.log(prim.locals.model);
+            once = true;
+        }
+    }
+
+    destroy()
+    {
+        
+    }
+
+}
+
+PrimRender.selfAware = true;
+
 export class ModelRender
 {
     asset = null;
@@ -19,15 +56,16 @@ export class ModelRender
         const program = programAsset.program;
 
         this.asset = gltfAsset;
-        this.gltf = this.asset.gltf;
+        const gltf = this.asset.gltf;
         const prims = [];
+        const thiz = this;
 
-        this.gltf.meshes.forEach(mesh => {
+        gltf.meshes.forEach(mesh => {
             mesh.primitives.forEach(prim => {
 
                 const localBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
 
-                prims.push({
+                prims[prim.id] ={
                     binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout),
                     numInstances: 0,
                     blockindex : 0,
@@ -36,12 +74,28 @@ export class ModelRender
                     //todo cache programs on materials?
                     program : program,
                     material : prim.material
-                })
+                };
             })
         })
+        
+        function nodeHelper(node)
+        {
+            if(node.mesh)
+            {
+                node.mesh.primitives.forEach(prim =>{
+                    let primEntity = thiz.createChild(PrimRender, Transform);
+                    primEntity.get(PrimRender).setPrim(prims[prim.id]);
+                    primEntity.get(Transform).setMatrix(node.matrix);
+                });
+            }
 
-        //todo cleanup bindings and programs and buffers, etc
-        this.renderables = prims;
+            if (node.children)
+            {
+                node.children.forEach(nodeHelper);
+            }
+        }
+
+        gltf.scenes[0].nodes.forEach(nodeHelper);
     }
 
     setAsset(gltfAsset)
@@ -51,28 +105,9 @@ export class ModelRender
             return;
         }
 
+        this.asset = gltfAsset;
+
         gltfAsset.safePromise(this.lifetime).then(this._loadGltfAsset.bind(this));
-    }
-
-    render(target)
-    {
-        const gpu = this.gpu;
-
-        const transform = this.get(Transform);
-
-        this.renderables.forEach(mesh => {
-
-            //target.globalsBuffer.bindUniformBlock(0, this.program);
-            mesh.program.use();
-            target.bindGlobals(mesh.program);
-
-            mat4.copy(mesh.locals.model, transform.matrix);
-
-            //mat4.fromRotationTranslationScale(mesh.locals.getBlock(mesh.blockIndex).model, );
-            mesh.material.bindTextures(gpu, mesh.program);
-            mesh.locals.bind(mesh.program)
-            gpu.rasterizeMesh(mesh.binding, mesh.numInstances);        
-        });
     }
 
     destroy()

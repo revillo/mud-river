@@ -1,10 +1,10 @@
 {
-  "name": "webgame",
+  "name": "Mud River",
   "version": "1.0.0",
-  "description": "webgame",
-  "main": "index.js",
+  "description": "JavaScript game engine",
+  "main": "serve_local.cjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node serve_local.cjs",
     "build": "webpack --config webpack.config.cjs",
     "build-rapier": "webpack --config rapier.webpack.cjs"
   },
@@ -13,6 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@dimforge/rapier3d": "^0.3.1",
+    "express": "^4.17.1",
     "jsdoc": "^3.6.6"
   },
   "devDependencies": {

@@ -1,7 +1,5 @@
 import { ShaderValueType } from "../buff/gpu-types.js";
-import { Camera } from "../components/camera.js";
-import { ModelRender } from "../components/model-render.js";
-import { Transform } from "../components/transform.js";
+import { ModelRender, PrimRender } from "../components/model-render.js";
 import { mat4 } from "../math/index.js";
 
 export class ForwardRenderer
@@ -24,12 +22,10 @@ export class ForwardRenderer
         
         mat4.identity(this.globalBlock.viewProjection);
 
-        this.renderView = gameContext.with(ModelRender);
+        this.renderView = gameContext.with(PrimRender);
 
         gameContext.renderer = this;
     }
-
-
 
     bindGlobals(program)
     {
@@ -49,7 +45,7 @@ export class ForwardRenderer
         mat4.multiply(this.globalBlock.viewProjection, this.projectionMatrix, this.viewMatrix);
 
         this.renderView(entity => {
-            entity.get(ModelRender).render(this);
+            entity.get(PrimRender).render(this);
         })
     }
     

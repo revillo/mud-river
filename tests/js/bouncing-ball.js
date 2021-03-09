@@ -31,7 +31,7 @@ var start = function()
         const vertBufferView = bufferManager.allocVertexBufferView(sphereGeometry.vertices);
         const indexBufferView = bufferManager.allocIndexBufferView(sphereGeometry.indices);
 
-        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.position, DefaultAttributes.normal, DefaultAttributes.uv0]); 
+        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0]); 
         const sphereVertexLayout = attrGen.generateAttributeLayout(vertBufferView);
     
         const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexBufferView);

@@ -775,3 +775,10 @@ export const setAxes = (function () {
     return normalize(out, fromMat3(out, matr));
   };
 })();
+
+
+const temp0 = create();
+const temp1 = create();
+const temp2 = create();
+
+export {temp0, temp1, temp2}

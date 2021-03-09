@@ -58,76 +58,9 @@ export class Entity
     }
 }
 
-
-export class GameEntity extends Entity
-{
-    constructor(context)
-    {
-        super(context);
-        this._parent = null;
-        this._children = new Set();
-    }
-
-    get parent()
-    {
-        return this._parent;
-    }
-
-    set parent(entity)
-    {
-        if (this._parent)
-        {
-            this._parent._children.delete(this);
-        }
-
-        this._parent = entity;
-
-        if (entity)
-            entity._children.add(this);
-    }
-
-    eachChild(fn, recurse = false)
-    {
-        for (let child of this._children)
-        {
-            fn(child)
-            recurse && child.eachChild(fn, true);
-        }
-    }
-
-    /*
-    on(eventName, listener)
-    {
-        this._inputListeners = this._inputListeners || new Map();
-        this._inputListeners.set(eventName, listener);
-        this.context.eventManager.addListener(eventName, listener);
-    }*/
-
-    destroy()
-    {
-        super.destroy();
-
-        this.parent = null;
-        this.eachChild(child => child.destroy(), true);
-
-        /*
-        if (this._inputListeners)
-        {
-            for (let [name,listener] of this._inputListeners)
-            {
-                this.context.eventManager.removeListener(name, listener);
-            }
-        }
-
-        delete this._inputListeners;
-        */
-    }
-}
-
-
 export class EntityPool
 {
-    constructor(EntityType = GameEntity)
+    constructor(EntityType = Entity)
     {
         this.EntityType = EntityType;
         this.sets = new Map();

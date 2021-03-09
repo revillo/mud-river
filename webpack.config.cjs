@@ -4,7 +4,7 @@ const dist = path.resolve(__dirname, "build");
 module.exports = {
 
 
-    entry: "./src/client-main.js",
+    entry: "./tests/js/game-fps.js",
 
     optimization : {
         minimize: true
@@ -23,7 +23,7 @@ module.exports = {
 
     output: {
         path: dist,
-        filename: "client-main.js"
+        filename: "game-fps.js"
     }
 };
     

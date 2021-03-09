@@ -54,21 +54,32 @@ const tempQuat = quat.create();
 export class CharacterController
 {
 
-    runForce = 10;
+    runForce = 30;
     jumpImpulse = 2;
-    looking = false;
     height = 2.0;
     lookAngles = vec2.create();
+    onGround = false;
+    glideForce = 5;
 
     start()
     {
-        this.ensure(Transform, Camera, Body);
+        this.ensure(Transform, Body);
 
-        this.transform = this.get(Transform);
-        this.camera = this.get(Camera);
-        this.bodyComp = this.get(Body);
-        this.bodyComp.configure(Body.DYNAMIC, {lockRotations: true});
-        this.bodyComp.addCollider(this.PHYSICS.ColliderDesc.capsule(this.height/2, 0.2).setTranslation(0, 1.0, 0.0));
+        this.camera = this.createChild(Camera, Transform);
+        this.camera.get(Transform).setPosition(0, this.height, 0);
+
+        const P = this.PHYSICS;
+        this.sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
+
+        this.capsuleColliderDesc = P.ColliderDesc.capsule(this.height/2, 0.2)
+            .setTranslation(0, this.height/2, 0.0)
+            .setCollisionGroups(this.sweepFilter);
+
+        this.sweepShape = new P.Capsule(this.height / 2, 0.19);
+
+        this.body = this.get(Body);
+        this.body.configure(Body.DYNAMIC, {lockRotations: true});
+        this.body.addCollider(this.capsuleColliderDesc);
         this.movement = vec3.create();
     
         this.bindInput("Jump", this.jump);
@@ -88,7 +99,7 @@ export class CharacterController
             this.get(Transform).setRotation(tempQuat);
 
             quat.fromEuler(tempQuat, this.lookAngles[1], 0, 0);
-            this.get(Camera).transform.setRotation(tempQuat);
+            this.camera.get(Transform).setRotation(tempQuat);
         }
        
     }
@@ -103,12 +114,52 @@ export class CharacterController
         if (button.isPressed)
         {
             vec3.set(this.movement, 0, this.jumpImpulse, 0);
-            this.bodyComp.applyImpulse(this.movement);
+            this.body.applyImpulse(this.movement);
         }  
+    }
+
+    detectGround()
+    {
+        /*
+        const ray = this.PHYSICS.tempRay;
+        ray.dir.set(0, -1, 0);
+        ray.origin.set();
+        */
+
+        //this.physicsWorld.castRayAndGetNormal(this.physicsWorld.colliders, )
+        const P = this.PHYSICS;
+
+        this.get(Transform).getWorldMatrix(mat4.temp0);
+        mat4.decompose(quat.temp0, vec3.temp0, vec3.temp1, mat4.temp0);
+
+        let physVel = P.vec3_1.set(0, -1, 0);
+        let physPos = P.vec3_0.fromArray(vec3.temp0);
+        let physRot = P.quat_0.fromArray(quat.temp0);
+
+        physPos.y += this.height/2 + 0.01;
+
+        let maxDist = 0.02;
+        let collisionResult = this.physicsWorld.castShape(this.physicsWorld.colliders, physPos, physRot, physVel, 
+            this.sweepShape, maxDist, this.sweepFilter);
+
+        if (collisionResult)
+        {
+            this.body.setLinearDamping(10);
+            this.onGround = true;
+        }
+        else
+        {
+            this.body.setLinearDamping(0);
+            this.onGround = false;
+        }
+
     }
 
     update(dt, clock)
     {
+
+        this.detectGround();
+
         vec3.zero(this.movement);
 
         if (this.isPressed('Forward'))
@@ -132,17 +183,17 @@ export class CharacterController
         }
 
 
-        vec3.setLength(this.movement, this.runForce);
+        vec3.setLength(this.movement, this.onGround ? this.runForce : this.glideForce);
 
         this.get(Transform).rotateVec3(this.movement);
 
-        this.bodyComp.applyForce(this.movement);
+        this.body.applyForce(this.movement);
+        
     }
 
     destroy()
     {
         this.unbindInputs();
-        super.destroy();
     }
 }
 

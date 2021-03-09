@@ -861,3 +861,9 @@ export const forEach = (function () {
     return a;
   };
 })();
+
+const temp0 = create();
+const temp1 = create();
+const temp2 = create();
+
+export {temp0, temp1, temp2}

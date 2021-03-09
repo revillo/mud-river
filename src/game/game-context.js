@@ -4,7 +4,53 @@ import { TextureManager } from "../assets/texture.js";
 import { BufferManager } from "../buff/buffer.js";
 import { GPUContext } from "../buff/gpu.js";
 //import { Rasterizer } from "../buff/rasterizer.js";
-import { EntityPool, GameEntity } from "../ecso/ecso.js";
+import { EntityPool, Entity } from "../ecso/ecso.js";
+
+export class GameEntity extends Entity
+{
+    constructor(context)
+    {
+        super(context);
+        this._parent = null;
+        this._children = new Set();
+    }
+
+    get parent()
+    {
+        return this._parent;
+    }
+
+    set parent(entity)
+    {
+        if (this._parent)
+        {
+            this._parent._children.delete(this);
+        }
+
+        this._parent = entity;
+
+        if (entity)
+            entity._children.add(this);
+    }
+
+    eachChild(fn, recurse = false)
+    {
+        for (let child of this._children)
+        {
+            fn(child)
+            recurse && child.eachChild(fn, true);
+        }
+    }
+
+    destroy()
+    {
+        super.destroy();
+
+        this.parent = null;
+        this.eachChild(child => child.destroy(), true);
+    }
+}
+
 
 export class EventManager
 {
@@ -53,14 +99,95 @@ export class GameContext extends EntityPool
             this.gltfManager = new GLTFManager(this.bufferManager, this.textureManager);
             this.programManager = new ProgramManager(this.gpu);
         }
-
-        this.PHYSICS = window.RAPIER;
-
-        this.PHYSICS.tempVec3 = new this.PHYSICS.Vector3(0.0, 0.0, 0.0);
-
         this.updaters = new Map();
-        let gravity = new this.PHYSICS.Vector3(0.0, -9.81, 0.0);
-        this.physicsWorld = new this.PHYSICS.World(gravity);         
+
+        this.initPhysics();
+
+        window.context = this;
+    }
+
+    initPhysics()
+    {
+        const PHYSICS = window.RAPIER;
+        this.PHYSICS = PHYSICS;
+
+        PHYSICS.vec3_0 = new PHYSICS.Vector3();
+        PHYSICS.vec3_1 = new PHYSICS.Vector3();
+        PHYSICS.vec3_2 = new PHYSICS.Vector3();
+
+        PHYSICS.quat_0 = new PHYSICS.Quaternion();
+        PHYSICS.quat_1 = new PHYSICS.Quaternion();
+        PHYSICS.quat_2 = new PHYSICS.Quaternion();
+
+        PHYSICS.ray_0 = new PHYSICS.Ray(new this.PHYSICS.Vector3(), new this.PHYSICS.Vector3());
+
+        Object.assign(PHYSICS.Vector3.prototype, {
+            set: function(x,y,z)
+            {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+
+                return this;
+            },
+
+            fromArray: function(v3)
+            {
+                this.x = v3[0];
+                this.y = v3[1];
+                this.z = v3[2];
+
+                return this;
+            }
+        });
+
+        Object.assign(PHYSICS.Quaternion.prototype, {
+            set: function(x,y,z,w)
+            {
+                this.x = x;
+                this.y = y;
+                this.z = z;
+                this.w = w;
+
+                return this;
+            },
+
+            fromArray: function(q)
+            {
+                this.x = q[0];
+                this.y = q[1];
+                this.z = q[2];
+                this.w = q[3];
+
+                return this;
+            }
+        });
+
+        PHYSICS.GROUP_STATIC = 0;
+        PHYSICS.GROUP_DYNAMIC = 1;
+        PHYSICS.GROUP_PLAYER = 2;
+
+        PHYSICS.getCollisionGroups = function(myGroups, interactGroups)
+        {
+            var result = 0;
+
+            for (let g of myGroups)
+            {
+                result += (1 << g);
+            }
+
+            result = result << 16;
+            
+            for (let f of interactGroups)
+            {
+                result += (1 << f);
+            }
+
+            return result;
+        }
+
+        let gravity = new PHYSICS.Vector3(0.0, -9.81, 0.0);
+        this.physicsWorld = new PHYSICS.World(gravity);         
     }
 
     addNewType(Component)
@@ -72,6 +199,21 @@ export class GameContext extends EntityPool
         if (Component.prototype.update)
         {
             this.updaters.set(Component, this.with(Component));
+        }
+
+        if (Component.selfAware)
+        {
+            Object.defineProperty(Component.prototype, "parent", {
+                get : function() {return this._entity.parent},
+                set : function(parent) {this._entity.parent = parent}
+            });
+
+            Component.prototype.createChild = function(...Components)
+            {
+                const e = this.context.create(...Components);
+                e.parent = this.entity;
+                return e;
+            }
         }
 
         const inputManager = this.inputManager;

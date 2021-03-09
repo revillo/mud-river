@@ -5,7 +5,7 @@ const dist = path.resolve(__dirname, "lib/rapier");
 module.exports = {
 
 
-    entry: "./lib/rapier.js",
+    entry: "./lib/export_rapier.js",
 
     optimization : {
         minimize: true
