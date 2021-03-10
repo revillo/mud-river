@@ -1,7 +1,7 @@
 import { DefaultAttributes } from "../../src/buff/attribute.js";
 import { RasterProgram } from "../../src/buff/program.js";
 import { ShaderSimpleTexture } from "../../src/buff/shader-mods/simple-texture.js";
-import { mat4 } from "../../src/math/index.js";
+import { mat4 } from "../../src/glm/index.js";
 import { RenderDemo } from "./render-demo.js";
 
 class RenderGLTF extends RenderDemo

@@ -25,6 +25,6 @@ export class RasterProgram
 
     use()
     {
-        this.gpu.bindProgram(this.gpuProgram);
+        return this.gpu.bindProgram(this.gpuProgram);
     }
 }

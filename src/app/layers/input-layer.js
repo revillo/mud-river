@@ -1,4 +1,4 @@
-import { vec3 } from "../../math/index.js";
+import { vec3 } from "../../glm/index.js";
 
 const DefaultBindings =
 {

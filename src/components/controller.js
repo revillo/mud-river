@@ -1,4 +1,5 @@
-import { vec2, vec3, quat, mat4 } from "../math/index.js";
+import { vec2, vec3, quat, mat4 } from "../glm/index.js";
+import { Vector3 } from "../math/index.js";
 import { Body } from "./body.js";
 import { Camera } from "./camera.js";
 import { Transform } from "./transform.js";
@@ -57,9 +58,13 @@ export class CharacterController
     runForce = 30;
     jumpImpulse = 2;
     height = 2.0;
+    halfHeight = this.height/2;
     lookAngles = vec2.create();
     onGround = false;
+    groundDistance = 0;
     glideForce = 5;
+    cushionForce = 5;
+    groundMaxDistance = 0.1;
 
     start()
     {
@@ -71,20 +76,22 @@ export class CharacterController
         const P = this.PHYSICS;
         this.sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
 
-        this.capsuleColliderDesc = P.ColliderDesc.capsule(this.height/2, 0.2)
-            .setTranslation(0, this.height/2, 0.0)
+        this.capsuleColliderDesc = P.ColliderDesc.capsule(this.halfHeight, 0.2)
+            .setTranslation(0, this.halfHeight, 0.0)
             .setCollisionGroups(this.sweepFilter);
 
-        this.sweepShape = new P.Capsule(this.height / 2, 0.19);
+        this.sweepShape = new P.Capsule(this.halfHeight, 0.19);
 
         this.body = this.get(Body);
         this.body.configure(Body.DYNAMIC, {lockRotations: true});
         this.body.addCollider(this.capsuleColliderDesc);
-        this.movement = vec3.create();
+        this.movement = Vector3.new();
     
         this.bindInput("Jump", this.jump);
         this.bindInput("Look", this.look);
         this.bindInput("Aim", this.aim);
+
+        window.player = this;
     }
 
     aim(axis)
@@ -129,30 +136,49 @@ export class CharacterController
         //this.physicsWorld.castRayAndGetNormal(this.physicsWorld.colliders, )
         const P = this.PHYSICS;
 
-        this.get(Transform).getWorldMatrix(mat4.temp0);
+        this.get(Transform).copyWorldMatrix(mat4.temp0);
         mat4.decompose(quat.temp0, vec3.temp0, vec3.temp1, mat4.temp0);
 
-        let physVel = P.vec3_1.set(0, -1, 0);
-        let physPos = P.vec3_0.fromArray(vec3.temp0);
-        let physRot = P.quat_0.fromArray(quat.temp0);
+        let sweepVel = P.vec3_1.set(0, -1, 0);
+        let sweepPos = P.vec3_0.fromArray(vec3.temp0);
+        let sweepRot = P.quat_0.fromArray(quat.temp0);
 
-        physPos.y += this.height/2 + 0.01;
+        sweepPos.y += this.halfHeight + 0.01;
 
-        let maxDist = 0.02;
-        let collisionResult = this.physicsWorld.castShape(this.physicsWorld.colliders, physPos, physRot, physVel, 
+        let maxDist = this.groundMaxDistance;
+        let collisionResult = this.physicsWorld.castShape(this.physicsWorld.colliders, sweepPos, sweepRot, sweepVel, 
             this.sweepShape, maxDist, this.sweepFilter);
-
+        
         if (collisionResult)
         {
             this.body.setLinearDamping(10);
             this.onGround = true;
+            this.groundDistance = collisionResult.toi;
+            
+   
+            let cushionY = Math.max(0.0, this.groundMaxDistance - this.groundDistance) / this.groundMaxDistance;
+            cushionY = Math.pow(cushionY, 0.5) * this.cushionForce; 
+            vec3.set(this.movement, 0, cushionY, 0);
+
+            this.body.applyForce(this.movement);
         }
         else
         {
-            this.body.setLinearDamping(0);
+            this.body.setLinearDamping(0.2);
             this.onGround = false;
         }
 
+    }
+
+    getReticleTranslation(out, distance)
+    {
+
+        this.camera.get(Transform).getWorldMatrix(Mat4.temp0);
+        vec3.set(out, 0, 0, -distance);
+        vec3.transformMat4(out, out, mat4.temp0);
+
+
+    
     }
 
     update(dt, clock)

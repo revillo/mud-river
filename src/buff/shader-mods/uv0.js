@@ -1,19 +1,19 @@
-import { ShaderValueType } from "../gpu-types.js";
+import { BinType } from "../gpu-types.js";
 import {ShaderMod} from "./shader-mod.js"
 
 const mod = {
-    defines : {
-        HAS_UV0 : 1
-    },
+    defines : [
+        ['HAS_UV0',  1]
+    ],
 
-    vertexAttributes : {
-        uv0 : ShaderValueType.VEC2
-    },
+    vertexAttributes : [
+        ['uv0', BinType.VEC2]
+    ],
 
     varyingBlocks : {
-        PerFragment : {
-            uv0 : ShaderValueType.VEC2
-        }
+        PerFragment : [
+            ['uv0', BinType.VEC2]
+        ]
     },
 
     vertexMain : [`

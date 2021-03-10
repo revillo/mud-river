@@ -1,13 +1,15 @@
-import { ShaderStage, BufferType, BufferUsage, BinType } from '../../src/buff/gpu-types.js';
-import { Rasterizer } from '../../src/buff/rasterizer.js';
-import { GPUContext} from '../../src/buff/gpu.js'
-import { RasterShaderBuilder} from '../../src/buff/shader-builder.js'
-import { mat4, vec3, quat, glMatrix } from '../../src/glm/index.js'
-import { Sphere } from '../../src/shape/sphere.js'
-import { ShaderNormals } from '../../src/buff/shader-mods/normals.js'
-import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/buff/attribute.js';
-import { RasterProgram } from '../../src/buff/program.js';
-import { UniformBlockBuffer, BufferManager } from '../../src/buff/buffer.js';
+import { ShaderStage, BufferType, BufferUsage, BinType } from './buff/gpu-types.js';
+import { Rasterizer } from './buff/rasterizer.js';
+import { GPUContext} from './buff/gpu.js'
+import { mat4, vec3, quat, glMatrix } from './glm/index.js.js'
+import { Sphere } from './shape/sphere.js'
+import { ShaderNormals } from './buff/shader-mods/normals.js'
+import { ShaderInstances } from './buff/shader-mods/instances.js'
+import { DefaultAttributes } from './buff/attribute.js';
+import { RasterProgram } from './buff/program.js';
+import { BufferManager, UniformBlockBuffer } from './buff/buffer.js';
+import { Timer } from './util/timer.js';
+import { TextureManager } from './assets/texture.js'
 
 var start = function()
 {        
@@ -19,30 +21,38 @@ var start = function()
 
     const gpu = new GPUContext(canvas);
     const renderer = new Rasterizer(gpu);
-    const program = new RasterProgram(gpu, DefaultAttributes, [ShaderNormals]);
+    const program = new RasterProgram(gpu, DefaultAttributes, [ShaderInstances, ShaderNormals]);
     const bufferManager = new BufferManager(gpu);
+
+    //Manage instances
+    const instanceCount = 2;
+    var instanceBB = bufferManager.allocInstanceBlockBuffer(instanceCount, program.instanceAttributes, BufferUsage.DYNAMIC);
+    const m1 = instanceBB.getBlock(0).instanceMatrix;
+    mat4.identity(m1);
+
+    const m2 = instanceBB.getBlock(1).instanceMatrix;
+    mat4.fromTranslation(m2, [3,0,0]);
+
+    instanceBB.uploadBlocks(0, instanceCount);
 
     function makeSphereMesh()
     {
         const sphere = new Sphere(1.0);
-
         const sphereGeometry = sphere.createGeometry();
 
-        const vertBufferView = bufferManager.allocVertexBufferView(sphereGeometry.vertices);
-        const indexBufferView = bufferManager.allocIndexBufferView(sphereGeometry.indices);
-
-        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0]); 
-        const sphereVertexLayout = attrGen.generateAttributeLayout(vertBufferView);
-    
-        const sphereBinding = gpu.createGeometryBinding(sphereVertexLayout, indexBufferView);
-
+        const binding = bufferManager.createGeometryBinding(sphereGeometry, 
+            [DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0], 
+            [DefaultAttributes.INSTANCE_MATRIX],
+            instanceBB.getInstanceBufferView()
+        );
+  
         const localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
         const myBlock = localsBuffer.getBlock(0);
         mat4.identity(myBlock.model);
 
         return {
-            binding : sphereBinding,
-            numInstances : 0,
+            binding : binding,
+            numInstances : instanceCount,
             worldTransform : myBlock.model,
             bindBuffers : function(gpu, renderBin)
             {
@@ -50,6 +60,7 @@ var start = function()
             }
         };
     }
+
 
     //Test Sphere
     var triangleMesh = makeSphereMesh();
@@ -79,12 +90,28 @@ var start = function()
         world.createCollider(groundColliderDesc, groundBody.handle);
 
         var stepEvents = new RAPIER.EventQueue(true);
+        var params = new RAPIER.IntegrationParameters();
+        const targetDelta = 1.0/200.0;
 
         return {
             world : world,
+            clock : 0,
             sphereBody : sphereBody,
-            step : () => {
-                world.step(stepEvents)
+            step : function(dt) {
+                
+                /*
+                world.timestep = dt;
+                world.step(stepEvents, params);
+                */
+
+                this.clock += dt;
+
+                while(this.clock > targetDelta)
+                {
+                    this.clock -= targetDelta;
+                    world.timestep = targetDelta;
+                    world.step(stepEvents, params);
+                }
             }
         }
     }
@@ -98,18 +125,18 @@ var start = function()
 
     mat4.perspective(camera.projection, glMatrix.toRadian(60), canvas.width / canvas.height, 0.1, 100);
     mat4.lookAt(camera.view, vec3.fromValues(0,3,10), vec3.fromValues(0,3, 0.5), vec3.fromValues(0, 1, 0));
-
+    
     const globalsBuffer = bufferManager.allocUniformBlockBuffer("Globals", 1, program.uniformBlocks.Globals);
     const globalBlock = globalsBuffer.getBlock(0);
     mat4.multiply(globalBlock.viewProjection, camera.projection, camera.view);
-    
+
     const triRenderBin = {
         program : program,
         meshes : [
             triangleMesh
         ],
         globalBlock : globalBlock,
-        bindBuffers : function(gpu)
+        bindBuffers : function()
         {
             globalsBuffer.bindUniformBlock(0, this.program);
         }
@@ -119,14 +146,16 @@ var start = function()
         renderBins : [triRenderBin]
     };
     
+    const timer = new Timer();
+
     var frame = ()=>
     {
-        physWorld.step();
+        let dt = timer.tick();
 
-        const collider = physWorld.world.colliders.get(0);
+        if (dt <= 0.0) dt = (1/60.0);
+        if (dt > 1.0/60.0 ) dt = 1/60.0; 
+        physWorld.step(dt);
 
-        const trans = collider.translation();
-        
         var t = physWorld.world.colliders.get(0).translation();
         var r = physWorld.world.colliders.get(0).rotation();
         //mat4.fromTranslation(triangleMesh.worldTransform, [t.x, t.y, t.z]);

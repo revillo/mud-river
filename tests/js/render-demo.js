@@ -1,8 +1,8 @@
-import { ShaderStage, BufferType, BufferUsage, ShaderValueType } from '../../src/buff/gpu-types.js';
+import { ShaderStage, BufferType, BufferUsage, BinType } from '../../src/buff/gpu-types.js';
 import { Rasterizer } from '../../src/buff/rasterizer.js';
 import { GPUContext} from '../../src/buff/gpu.js'
 import { RasterShaderBuilder} from '../../src/buff/shader-builder.js'
-import { mat4, vec3, quat, glMatrix } from '../../src/math/index.js'
+import { mat4, vec3, quat, glMatrix } from '../../src/glm/index.js'
 import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/buff/attribute.js';
 import {UniformBlockBuffer, BufferManager} from '../../src/buff/buffer.js'
 import { RasterProgram } from '../../src/buff/program.js';

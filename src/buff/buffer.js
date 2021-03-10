@@ -1,5 +1,5 @@
  /**
- * @typedef {import("./gpu-types").ShaderValueTypeInfo} ShaderValueTypeInfo
+ * @typedef {import("./gpu-types").BinTypeInfo} ShaderValueTypeInfo
  */
 
 import { GPUContext } from "./gpu.js";
@@ -16,7 +16,7 @@ class BlockBuffer
     constructor(count, schema, alignment)
     {
         var blockSize = 0;
-        this.schema = {};
+        this.schema = [];
         this.blocks = [];
         this.blocks.length = count;
 
@@ -25,27 +25,30 @@ class BlockBuffer
             this.offset = offset;
         }
 
-        var thiz = this;
-
-        for (let propertyName in schema)
+        for (let prop of schema)
         {
             const blockOffset = blockSize;
 
             /**
              * @type {ShaderValueTypeInfo}
              */
-            const type = schema[propertyName];
+            const type = prop[1];
+            const name = prop[0];
 
-            this.schema[propertyName] = 
+            this.schema.push( 
             {
                 type: type,
-                blockOffset : blockOffset            
-            }
+                blockOffset : blockOffset,    
+                name :  name    
+            });
 
-            Object.defineProperty(this.blockClass.prototype, propertyName, {
+            let index = this.schema.length;
+
+            Object.defineProperty(this.blockClass.prototype, name, {
                 get : function()
                 {
-                    return new type.BufferType(thiz.cpuBuffer, this.offset + blockOffset, type.typeCount);
+                    //return new type.BufferType(thiz.cpuBuffer, this.offset + blockOffset, type.typeCount);
+                    return this.vs[index];
                 },
                 set : setError
             });
@@ -56,9 +59,6 @@ class BlockBuffer
         this.blockSize = blockSize;
         this.count = count;
         this._createArrayBuffer(count);
-
-
-
     }
 
     setBufferViewGPU(view, gpu)
@@ -105,13 +105,11 @@ class BlockBuffer
             this._buffer.bindUniformBlock(this._index, program);
         }};
 
-        for (let propertyName in this.schema)
+        for (let prop of this.schema)
         {
-            const property = this.schema[propertyName];
-
-            const type = property.type;
-            block[propertyName] = new type.BufferType(this.cpuBuffer, offset, type.typeCount);
-            offset += property.blockOffset;
+            const type = prop.type;
+            block[prop.name] = new type.BufferType(this.cpuBuffer, offset, type.typeCount);
+            offset += prop.blockOffset;
         }
         
 
@@ -130,9 +128,9 @@ export class UniformBlockBuffer extends BlockBuffer
 
         this.uniformPrefix = "u_" + this.name + ".";
 
-        for (let propertyName in this.schema)
+        for (let prop of this.schema)
         {
-            this.schema[propertyName].bindName = (this.uniformPrefix + propertyName);
+             prop.bindName = (this.uniformPrefix + prop.name);
         }
     }
 
@@ -140,11 +138,10 @@ export class UniformBlockBuffer extends BlockBuffer
     {
         let block = this.getBlock(index);
         //WebGL1 version
-        for (let propertyName in this.schema)
+        for (let prop of this.schema)
         {
-            const property = this.schema[propertyName];
-            const type = property.type;
-            this.gpu.bindUniformValue(program.gpuProgram, type, property.bindName, block[propertyName]);
+            const type = prop.type;
+            this.gpu.bindUniformValue(program.gpuProgram, type, prop.bindName, block[prop.name]);
         }
     }
 }

@@ -7,7 +7,7 @@
   * @typedef {Object} AttributeLayout
   * @property {GPUBuffer} buffer
   * @property {number} location  
-  * @property {ShaderValueTypeInfo} type
+  * @property {BinTypeInfo} type
   * @property {number} offset 
   * @property {number} stride
   * @property {bool} [isNormalized]
@@ -24,7 +24,7 @@
  */
 
 /**
- * @typedef {Object} ShaderValueTypeInfo
+ * @typedef {Object} BinTypeInfo
  * @property {number} sizeBytes - size of one value in bytes
  * @property {number} attribLocs - number of locations required for attribute binding
  * @property {string} attribType - type to use for attribute pointers
@@ -47,19 +47,19 @@ const PrimitiveType = {
 
 /**
  * @readonly
- * @enum {ShaderValueTypeInfo}
+ * @enum {BinTypeInfo}
  * 
  */
-const ShaderValueType =
+const BinType =
 {
-    FLOAT : {id : "FLOAT", sizeBytes: 4, attribLocs: 1, attribType: PrimitiveType.FLOAT, attribCount : 1, typeCount : 1, BufferType : Float32Array}
-    ,MAT4 : {id : "MAT4", sizeBytes : 64, attribLocs: 4, attribType : PrimitiveType.FLOAT, attribCount : 4, typeCount : 16, BufferType : Float32Array}
-    ,COLOR3 : {id: "COLOR3", sizeBytes : 3, attribLocs: 1, attribType: PrimitiveType.UNSIGNED_BYTE, attribCount : 3, typeCount : 3, BufferType: Uint8Array}
-    ,COLOR4 :  {id: "COLOR4", sizeBytes : 4, attribLocs: 1, attribType: PrimitiveType.UNSIGNED_BYTE, attribCount : 4, typeCount : 4, BufferType: Uint8Array}
-    ,VEC2 : {id: "VEC2", sizeBytes: 8, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 2, typeCount : 2, BufferType : Float32Array}
-    ,VEC3 : {id: "VEC3", sizeBytes: 12, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 3, typeCount : 3, BufferType : Float32Array}
-    ,VEC4 :  {id: "VEC4", sizeBytes : 16, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 4, typeCount : 4, BufferType : Float32Array}
-    ,IVEC4 : {id: "IVEC4", sizeBytes: 16, attribLocs: 1, attribType : PrimitiveType.INT, attribCount : 4, typeCount : 4, BufferType : Int32Array}
+    FLOAT : {glsl : "float", sizeBytes: 4, attribLocs: 1, attribType: PrimitiveType.FLOAT, attribCount : 1, typeCount : 1, BufferType : Float32Array}
+    ,MAT4 : {glsl : "mat4", sizeBytes : 64, attribLocs: 4, attribType : PrimitiveType.FLOAT, attribCount : 4, typeCount : 16, BufferType : Float32Array}
+    ,COLOR3 : {glsl: "vec3", sizeBytes : 3, attribLocs: 1, attribType: PrimitiveType.UNSIGNED_BYTE, attribCount : 3, typeCount : 3, BufferType: Uint8Array}
+    ,COLOR4 :  {glsl: "vec4", sizeBytes : 4, attribLocs: 1, attribType: PrimitiveType.UNSIGNED_BYTE, attribCount : 4, typeCount : 4, BufferType: Uint8Array}
+    ,VEC2 : {glsl: "vec2", sizeBytes: 8, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 2, typeCount : 2, BufferType : Float32Array}
+    ,VEC3 : {glsl: "vec3", sizeBytes: 12, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 3, typeCount : 3, BufferType : Float32Array}
+    ,VEC4 :  {glsl: "vec4", sizeBytes : 16, attribLocs: 1, attribType : PrimitiveType.FLOAT, attribCount : 4, typeCount : 4, BufferType : Float32Array}
+    ,IVEC4 : {glsl: "ivec4", sizeBytes: 16, attribLocs: 1, attribType : PrimitiveType.INT, attribCount : 4, typeCount : 4, BufferType : Int32Array}
 }
 
 
@@ -107,4 +107,4 @@ const TextureType =
     TEXTURE_2D : {id: "TEXTURE2D"}
 }
 
-export {ShaderStage, BufferType, BufferUsage, ShaderValueType, TextureType, PrimitiveType}
+export {ShaderStage, BufferType, BufferUsage, BinType as BinType, TextureType, PrimitiveType}

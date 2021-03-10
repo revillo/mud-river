@@ -175,11 +175,11 @@ export class EntityPool
     free(entity)
     {
         const sets = this.sets;
+        entity._destroyComponents();
         for (let C of entity.components.keys())
         {
             sets.get(C).delete(entity);
         }
-        entity._destroyComponents();
         entity.components.clear();
         this.discarded.push(entity);
         this.size--;

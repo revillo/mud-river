@@ -1,11 +1,9 @@
 import { Lifetime } from "../assets/assets.js";
-import { DefaultAttributes } from "../buff/attribute.js";
-import { RasterProgram } from "../buff/program.js";
 import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
-import { mat4 } from "../math/index.js";
+import { Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 
-var once = false;
+let tempVec3 = new Vector3();
 
 export class PrimRender
 {
@@ -13,34 +11,53 @@ export class PrimRender
     setPrim(prim)
     {
         this.prim = prim;
+        this.addToCullWorld();
     }
 
-    render(target)
+    addToCullWorld()
     {
+        let P = this.PHYSICS;
         const prim = this.prim;
-        const program = prim.program;
-        program.use();
-        target.bindGlobals(program);        
-        this.get(Transform).getWorldMatrix(prim.locals.model);
-        prim.material.bindTextures(target.gpu, program);
-        prim.locals.bind(program)
-        target.gpu.rasterizeMesh(prim.binding, prim.numInstances);        
 
-        if (!once)
-        {
-            console.log(prim.locals.model);
-            once = true;
+        //todo compute
+        if (!this.prim.extents){
+            return;
         }
+
+        var desc = P.RigidBodyDesc.newKinematic();
+        this._cullBody = this.context.cullWorld.createRigidBody(desc);
+
+        var colliderDesc = P.ColliderDesc.cuboid(prim.extents[0], prim.extents[1], prim.extents[2])
+            .setCollisionGroups(P.getCollisionGroups([P.GROUP_CULL], [P.GROUP_PLAYER]))
+            .setTranslation(prim.center.x, prim.center.y, prim.center.z);
+        
+        this.collider = this.context.cullWorld.createCollider(colliderDesc, this._cullBody.handle);
+
+        this.context.cullMap.set(this.collider.handle, this.prim);
+    }
+
+    //todo remove
+    update(dt)
+    {
+        this.get(Transform).copyWorldMatrix(this.prim.locals.model);
+        this.get(Transform).worldMatrix.copyTranslation(tempVec3);
+        this._cullBody.setTranslation(tempVec3);
     }
 
     destroy()
     {
+        this.context.cullMap.delete(this.collider.handle);
+        this.context.gpu.deleteGeometryBinding(this.prim.binding);
+        this.context.cullWorld.removeRigidBody(this._cullBody);
         
+        //todo
+        //prim.locals.destroy();
     }
 
 }
 
 PrimRender.selfAware = true;
+PrimRender.physicsAware = true;
 
 export class ModelRender
 {
@@ -69,6 +86,8 @@ export class ModelRender
                     binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout),
                     numInstances: 0,
                     blockindex : 0,
+                    extents : prim.extents,
+                    center: prim.center,
                     localBuffer : localBuffer,
                     locals : localBuffer.getBlock(0),
                     //todo cache programs on materials?
@@ -83,7 +102,7 @@ export class ModelRender
             if(node.mesh)
             {
                 node.mesh.primitives.forEach(prim =>{
-                    let primEntity = thiz.createChild(PrimRender, Transform);
+                    let primEntity = thiz.primContainer.createChild(PrimRender, Transform);
                     primEntity.get(PrimRender).setPrim(prims[prim.id]);
                     primEntity.get(Transform).setMatrix(node.matrix);
                 });
@@ -105,9 +124,18 @@ export class ModelRender
             return;
         }
 
+        if (this.primContainer)
+        {
+            this.primContainer.destroy();
+        }
+
+        this.primContainer = this.createChild();
+
         this.asset = gltfAsset;
 
-        gltfAsset.safePromise(this.lifetime).then(this._loadGltfAsset.bind(this));
+        gltfAsset.safePromise(this.lifetime)
+            .then(this._loadGltfAsset.bind(this))
+            .catch(err => {err && console.error(err)});
     }
 
     destroy()

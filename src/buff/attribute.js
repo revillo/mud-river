@@ -1,16 +1,16 @@
-import { ShaderValueType } from "./gpu-types.js";
+import { BinType } from "./gpu-types.js";
 
 const DefaultAttributes = 
 {
-     POSITION : {id: "a_position", type: ShaderValueType.VEC3}
-    ,NORMAL : {id: "a_normal", type: ShaderValueType.VEC3}
-    ,UV0 : {id: "a_uv0", type: ShaderValueType.VEC2}
-    ,UV1 : {id: "a_uv1", type: ShaderValueType.VEC2}
-    ,TANGENT : {id: "a_tangent", type: ShaderValueType.VEC3}
-    ,BONE_WEIGHTS : {id: "a_boneWeights", type: ShaderValueType.VEC4}
-    ,BONE_INDICES : {id: "a_boneIndices", type: ShaderValueType.IVEC4}
-    ,INSTANCE_MATRIX : {id : "a_instanceMatrix", type : ShaderValueType.MAT4}
-    ,INSTANCE_COLOR : {id : "a_instanceColor", type : ShaderValueType.VEC4}
+     POSITION : {id: "a_position", type: BinType.VEC3}
+    ,NORMAL : {id: "a_normal", type: BinType.VEC3}
+    ,UV0 : {id: "a_uv0", type: BinType.VEC2}
+    ,UV1 : {id: "a_uv1", type: BinType.VEC2}
+    ,TANGENT : {id: "a_tangent", type: BinType.VEC3}
+    ,BONE_WEIGHTS : {id: "a_boneWeights", type: BinType.VEC4}
+    ,BONE_INDICES : {id: "a_boneIndices", type: BinType.IVEC4}
+    ,INSTANCE_MATRIX : {id : "a_instanceMatrix", type : BinType.MAT4}
+    ,INSTANCE_COLOR : {id : "a_instanceColor", type : BinType.VEC4}
 }
 
 function ComputeLocations()

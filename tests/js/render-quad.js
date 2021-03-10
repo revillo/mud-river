@@ -1,7 +1,7 @@
 import { AttributeLayoutGenerator, DefaultAttributes } from "../../src/buff/attribute.js";
 import { RasterProgram } from "../../src/buff/program.js";
 import { ShaderSimpleTexture } from "../../src/buff/shader-mods/simple-texture.js";
-import { mat4 } from "../../src/math/index.js";
+import { mat4 } from "../../src/glm/index.js";
 import { RenderDemo } from "./render-demo.js";
 
 class RenderQuad extends RenderDemo
@@ -19,10 +19,10 @@ class RenderQuad extends RenderDemo
     
             //Make buffer views for geometry
             const vertBufferView = bufferManager.allocVertexBufferView(new Float32Array([
-                -1.0, -1.0, 0.5, 0, 0,
-                1.0, -1.0, 0.5, 1, 0,
-                1.0, 1.0, 0.5, 1, 1,
-                -1.0, 1.0, 0.5, 0, 1 
+                -1.0, -1.0, 0.5, 0, 1,
+                1.0, -1.0, 0.5, 1, 1,
+                1.0, 1.0, 0.5, 1, 0,
+                -1.0, 1.0, 0.5, 0, 0 
             ]));
     
             const indexBufferView = bufferManager.allocIndexBufferView(new Uint16Array([

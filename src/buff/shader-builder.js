@@ -1,4 +1,4 @@
-import {ShaderStage, ShaderValueType} from "./gpu-types.js"
+import {ShaderStage, BinType} from "./gpu-types.js"
 
 /**
  * @class
@@ -18,33 +18,33 @@ export class RasterShaderBuilder
         this.modules = modules || [];
         
         this.textures =
-        {
+        [
              
-        }
+        ]
 
         this.uniformBlocks = 
         {
-            Globals : {
-                viewProjection : ShaderValueType.MAT4 
-            },
+            Globals : [
+                ['viewProjection', BinType.MAT4] 
+            ],
 
-            Locals : {
-                model : ShaderValueType.MAT4
-            }
+            Locals : [
+                ['model', BinType.MAT4]
+            ]
         }
 
         this.vertexAttributes = 
-        {
-            position : ShaderValueType.VEC3
-        }
+        [
+            ['position', BinType.VEC3]
+        ]
 
-        this.instanceAttributes = {};
+        this.instanceAttributes = [];
 
         this.varyingBlocks =
         {
-            PerFragment: {
-                worldPosition : ShaderValueType.VEC3
-            }
+            PerFragment: [
+                ['worldPosition', BinType.VEC3]
+            ]
         };
 
         this.fragmentMain = [
@@ -60,16 +60,9 @@ export class RasterShaderBuilder
         this.vertexFunctions = [];
 
         this.defines = 
-        {
-            FLOAT : "float",
-            VEC2 : "vec2",
-            VEC3 : "vec3",
-            VEC4 : "vec4",
-            MAT4 : "mat4",
-            COLOR3 : "lowp vec3",
-            COLOR4 : "lowp vec4",
-            TEXTURE2D : "sampler2D"
-        }
+        [
+            ['TEXTURE2D' , "sampler2D"]
+        ]
 
     }
 
@@ -85,17 +78,15 @@ export class RasterShaderBuilder
 
 
     _writeBlocks(blocks, typeName, prefix)
-    {   
+    {
         for (let blockName in blocks)
         {
             this.$(`\nstruct  ${blockName}  {`);
             const block = blocks[blockName];
 
-            for (let propertyName in block)
+            for (let prop of block)
             {
-                let typeInfo = block[propertyName];
-
-                this.$(`${typeInfo.id}  ${propertyName};`);
+                this.$(`${prop[1].glsl}  ${prop[0]};`);
             }
 
             this.$(`};\n${typeName}  ${blockName}  ${prefix}${blockName};\n`);
@@ -104,9 +95,9 @@ export class RasterShaderBuilder
     
     _writeTextures()
     {
-        for (let texName in this.textures)
+        for (let tex of this.textures)
         {
-            this.$(`UNIFORM ${this.textures[texName].id} t_${texName};`)
+            this.$(`UNIFORM ${tex[1].id} t_${tex[0]};`)
         }
     }
 
@@ -122,24 +113,22 @@ export class RasterShaderBuilder
 
     _writeAttributes()
     {        
-        for (let propertyName in this.vertexAttributes)
+        for (let prop of this.vertexAttributes)
         {
-            let typeInfo = this.vertexAttributes[propertyName];
-            this.$(`ATTRIBUTE ${typeInfo.id} a_${propertyName};`)
+            this.$(`ATTRIBUTE ${prop[1].glsl} a_${prop[0]};`)
         }
 
-        for (let propertyName in this.instanceAttributes)
+        for (let prop of this.instanceAttributes)
         {
-            let typeInfo = this.instanceAttributes[propertyName];
-            this.$(`ATTRIBUTE ${typeInfo.id} a_${propertyName};`)
+            this.$(`ATTRIBUTE ${prop[1].glsl} a_${prop[0]};`)
         }
     }
 
     _writeDefines()
     {
-        for (let propertyName in this.defines)
+        for (let prop of this.defines)
         {
-            this.$(`#define ${propertyName} ${this.defines[propertyName]}`)
+            this.$(`#define ${prop[0]} ${prop[1]}`)
         }
     }
 

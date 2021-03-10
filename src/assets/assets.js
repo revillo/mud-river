@@ -6,7 +6,7 @@ export class Lifetime
 
         this._promise = new Promise((res, rej) => {
             thiz.end = rej;
-        });
+        }).catch(() => {});
     }
 
     get promise()

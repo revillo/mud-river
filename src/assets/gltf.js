@@ -1,6 +1,7 @@
 import { DefaultAttributes } from "../buff/attribute.js";
-import { BufferType, BufferUsage, ShaderValueType } from "../buff/gpu-types.js";
-import { mat4 } from "../math/index.js";
+import { BufferType, BufferUsage, BinType } from "../buff/gpu-types.js";
+import { mat4 } from "../glm/index.js";
+import { Vector3 } from "../math/index.js";
 import { prune } from "../util/object.js";
 import { Asset, AssetManager } from "./assets.js";
 
@@ -14,8 +15,8 @@ const GLTFAttribute =
 
 const GLTFType =
 {
-    VEC3_5126 : ShaderValueType.VEC3,
-    VEC2_5126 : ShaderValueType.VEC2
+    VEC3_5126 : BinType.VEC3,
+    VEC2_5126 : BinType.VEC2
 }
 
 const GLTFIndexType = 
@@ -24,6 +25,13 @@ const GLTFIndexType =
     5125 : {size: 4} //unsigned int
 }
 
+function safeEach(array, handler)
+{
+    if (array)
+    {
+        array.forEach(handler);
+    }
+}
 
 const GLTFMaterialBindTextures = function(gpu, program)
 {
@@ -53,6 +61,9 @@ export class GLTFAsset extends Asset
             .then(gltf => thiz.processMeshes(gltf))
             .then(gltf => thiz.processScene(gltf))
             .then(gltf => {
+                
+                console.log(gltf);
+
                 thiz.gltf = gltf;
                 return Promise.resolve(thiz);
             })
@@ -115,7 +126,7 @@ export class GLTFAsset extends Asset
             return gltf.textures[texture.index].asset;
         }
 
-        gltf.materials.forEach(material => {
+        safeEach(gltf.materials, material => {
             material.textures = {};
             material.factors = {};
 
@@ -156,7 +167,10 @@ export class GLTFAsset extends Asset
                  * @type {Map<string, AttributeLayout>}
                  */
                 primitive.vertexLayout = {};
-                primitive.material = gltf.materials[primitive.material];
+                if (primitive.material != undefined)
+                {
+                    primitive.material = gltf.materials[primitive.material];
+                }
                 primitive.id = primId++;
 
                 for (var attribName in primitive.attributes)
@@ -228,6 +242,17 @@ export class GLTFAsset extends Asset
             {
                 prim.indicesPhys = new Uint32Array(u8Buffer.buffer, u8Buffer.byteOffset, u8Buffer.byteLength/4);
             }
+
+            prim.extents = new Vector3(positionAccessor.max[0] - positionAccessor.min[0], 
+                positionAccessor.max[1] - positionAccessor.min[1],
+                positionAccessor.max[2] - positionAccessor.min[2]);
+            
+            prim.extents.scale(0.5);
+
+            prim.center = new Vector3(positionAccessor.max[0] + positionAccessor.min[0], 
+                positionAccessor.max[1] + positionAccessor.min[1],
+                positionAccessor.max[2] + positionAccessor.min[2]);
+            prim.center.scale(0.5);
         }
 
     }
@@ -260,8 +285,6 @@ export class GLTFAsset extends Asset
     loadBuffers(gltf)
     {
         var thiz = this;
-
-        console.log(gltf);
 
         if (gltf.images)
         {

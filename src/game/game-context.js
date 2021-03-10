@@ -20,6 +20,13 @@ export class GameEntity extends Entity
         return this._parent;
     }
 
+    createChild(...Components)
+    {
+        const e = this._context.create(...Components);
+        e.parent = this;
+        return e;   
+    }
+
     set parent(entity)
     {
         if (this._parent)
@@ -44,10 +51,9 @@ export class GameEntity extends Entity
 
     destroy()
     {
-        super.destroy();
-
         this.parent = null;
         this.eachChild(child => child.destroy(), true);
+        super.destroy();
     }
 }
 
@@ -166,6 +172,7 @@ export class GameContext extends EntityPool
         PHYSICS.GROUP_STATIC = 0;
         PHYSICS.GROUP_DYNAMIC = 1;
         PHYSICS.GROUP_PLAYER = 2;
+        PHYSICS.GROUP_CULL = 3;
 
         PHYSICS.getCollisionGroups = function(myGroups, interactGroups)
         {
@@ -187,7 +194,9 @@ export class GameContext extends EntityPool
         }
 
         let gravity = new PHYSICS.Vector3(0.0, -9.81, 0.0);
-        this.physicsWorld = new PHYSICS.World(gravity);         
+        this.physicsWorld = new PHYSICS.World(gravity);
+        this.cullWorld = new PHYSICS.World(gravity);     
+        this.cullMap = new Map();
     }
 
     addNewType(Component)

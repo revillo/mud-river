@@ -8,6 +8,69 @@ import { Transform } from "../../src/components/transform.js";
 import { Body } from "../../src/components/body.js";
 import {ForwardRenderer} from "../../src/game/forward-renderer.js"
 import { ModelRender } from "../../src/components/model-render.js";
+import { Vector3 } from "../../src/math/index.js"
+
+let tempVec3 = Vector3.new();
+
+class Expiration
+{
+    timeLeft = 10;
+
+    configure(timeLeft)
+    {
+        this.timeLeft = timeLeft;
+    }
+
+    update(dt)
+    {
+        this.timeLeft -= dt;
+        if (this.timeLeft < 0)
+        {
+            this.entity.destroy();
+        }
+    }
+}
+
+Expiration.selfAware = true;
+
+class ShootingPlayer extends CharacterController
+{
+    start()
+    {
+        super.start();
+        this.bindInput("Use", this.shootBall)
+    }
+
+    shootBall(button)
+    {
+        if (button.isPressed)
+        {
+            const P = this.PHYSICS;
+
+            let ball = this.context.create(Body, Transform, ModelRender, Expiration);
+    
+            this.camera.get(Transform).worldMatrix.copyTranslation(tempVec3);
+            tempVec3.y -= 0.1;
+            ball.get(Transform).setTranslation(tempVec3);
+        
+            ball.get(Body).configure(Body.DYNAMIC);
+
+            ball.get(Body).addCollider (
+                P.ColliderDesc.ball(0.1)
+                .setCollisionGroups(P.getCollisionGroups([P.GROUP_DYNAMIC], [P.GROUP_DYNAMIC, P.GROUP_STATIC]))
+                .setRestitution(0.7)
+                .setRestitutionCombineRule(P.CoefficientCombineRule.Max)
+            );
+    
+            this.camera.get(Transform).worldMatrix.copyForward(tempVec3);
+            tempVec3.scale(0.05);
+            ball.get(Body).applyImpulse(tempVec3);
+    
+            ball.get(ModelRender).setAsset(this.context.gltfManager.fromUrl("gltf/src/ball.gltf"));
+        }
+    }
+}
+
 
 let start = () => {
     //App
@@ -27,6 +90,9 @@ let start = () => {
     cube.get(ModelRender).setAsset(startAsset);
     cube.get(Body).configure(Body.STATIC)
     cube.get(Body).setAsset(startAsset);
+
+    
+
     /*
     cube.get(Body).addCollider(PHYSICS.ColliderDesc.cuboid(1, 1, 1)
         .setCollisionGroups(PHYSICS.getCollisionGroups([PHYSICS.GROUP_STATIC], [PHYSICS.GROUP_DYNAMIC, PHYSICS.GROUP_PLAYER])));
@@ -42,11 +108,11 @@ let start = () => {
     //let player = gameContext.create(FreeController, Camera, Transform);
 
     startAsset.getPromise().then(() => {
-        let player = gameContext.create(CharacterController);
+        let player = gameContext.create(ShootingPlayer);
 
         //Renderer
         let renderer = new ForwardRenderer(gameContext);
-        renderer.mainCamera = player.get(CharacterController).camera.get(Camera);
+        renderer.mainCamera = player.get(ShootingPlayer).camera.get(Camera);
     
     });
 

@@ -1,8 +1,8 @@
  /**
- * @typedef {import("./gpu-types").ShaderValueTypeInfo} ShaderValueTypeInfo
+ * @typedef {import("./gpu-types").BinTypeInfo} ShaderValueTypeInfo
  */
 
-import { ShaderValueType, BufferUsage, PrimitiveType } from "./gpu-types.js";
+import { BinType, BufferUsage, PrimitiveType } from "./gpu-types.js";
 
 const DefaultTexture2DSettings = {
     mipmap : true
@@ -281,7 +281,7 @@ export class GPUContext
 
     }
 
-    deleteMeshBinding(meshBinding)
+    deleteGeometryBinding(meshBinding)
     {
         this.gl.deleteVertexArray(meshBinding.glVAO);
     }
@@ -302,7 +302,7 @@ export class GPUContext
 
     _makeBindFuncs()
     {
-        ShaderValueType.MAT4._bindFunc = (gl, loc, data) =>
+        BinType.MAT4._bindFunc = (gl, loc, data) =>
         {
             gl.uniformMatrix4fv(loc, false, data);
         } 
@@ -357,13 +357,21 @@ export class GPUContext
 
     unbindProgram()
     {
+        this.boundProgram = null;
         this.gl.useProgram(null);
     }
 
     bindProgram(program)
     {
-        const gl = this.gl;
-        gl.useProgram(program.glProgram);
+        var changed = program != this.boundProgram;
+        if (!changed)
+        {
+            return false;
+        }
+
+        this.boundProgram = program;
+        this.gl.useProgram(program.glProgram);
+        return true;
     }
 
     bindUniformValue(program, valueTypeInfo, name, arrayBuffer)

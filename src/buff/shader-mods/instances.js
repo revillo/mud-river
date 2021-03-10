@@ -1,14 +1,14 @@
-import { ShaderValueType } from "../gpu-types.js";
+import { BinType } from "../gpu-types.js";
 import {ShaderMod} from "./shader-mod.js"
 
 const mod = {
-    defines : {
-        HAS_INSTANCES : 1
-    },
+    defines : [
+        ['HAS_INSTANCES' , 1]
+    ],
 
-    instanceAttributes : {
-        instanceMatrix : ShaderValueType.MAT4
-    },
+    instanceAttributes : [
+        ['instanceMatrix', BinType.MAT4]
+    ],
 
     vertexMain : [`
     worldMatrix = worldMatrix * a_instanceMatrix;

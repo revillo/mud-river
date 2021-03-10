@@ -1,9 +1,10 @@
 import { Lifetime } from "../assets/assets.js";
-import { mat4, quat, vec3 } from "../math/index.js";
+import { mat4, quat, vec3 } from "../glm/index.js";
+import { Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 
-const tempVec3 = vec3.create();
-const tempQuat = quat.create();
+const tempVec3 = new Vector3();
+const tempQuat = new Quaternion();
 
 
 export class Body
@@ -95,29 +96,18 @@ export class Body
 
     syncTransformToBody()
     {
-        this.get(Transform).getTranslation(tempVec3);
-        this.get(Transform).getRotation(tempQuat);
+        var v = new Vector3();
 
-        const trans = this._body.translation();
-        const rot = this._body.rotation();
+        this.get(Transform).worldMatrix.decompose(tempVec3, tempQuat);
 
-        trans.x = tempVec3[0];
-        trans.y = tempVec3[1];
-        trans.z = tempVec3[2];
-
-        rot.x = tempQuat[0];
-        rot.y = tempQuat[1];
-        rot.z = tempQuat[2];
-        rot.w = tempQuat[3];
-
-        this._body.setTranslation(trans);
-        this._body.setRotation(rot);
+        this._body.setTranslation(tempVec3);
+        this._body.setRotation(tempQuat);
     }
 
     syncBodyToTransform()
     {
         var pos = this._body.translation();
-        vec3.set(tempVec3, pos.x, pos.y, pos.z);
+        tempVec3.set(pos.x, pos.y, pos.z)
 
         if (this.options.lockRotations)
         {
@@ -142,12 +132,7 @@ export class Body
 
     applyForce(force)
     {
-        const tvec3 = this.PHYSICS.vec3_0;
-        tvec3.x = force[0];
-        tvec3.y = force[1];
-        tvec3.z = force[2];
-
-        this._body.applyForce(tvec3, true);
+        this._body.applyForce(force, true);
     }
 
     setLinearDamping(damping)
@@ -167,7 +152,9 @@ export class Body
 
     setAsset(gltfAsset)
     {
-        gltfAsset.safePromise(this.lifetime).then(this._processGltfAsset.bind(this));
+        gltfAsset.safePromise(this.lifetime)
+            .then(this._processGltfAsset.bind(this))
+            .catch(err => {err && console.log(err)});
     }
 
     _processGltfAsset(gltfAsset)
@@ -204,6 +191,7 @@ export class Body
 
                         colliderDesc.setCollisionGroups(P.getCollisionGroups([P.GROUP_STATIC], [P.GROUP_DYNAMIC, P.GROUP_PLAYER]));
 
+                        
                        world.createCollider(colliderDesc, body.handle);
                 
                     }
