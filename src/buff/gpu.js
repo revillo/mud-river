@@ -67,7 +67,8 @@ export class GPUContext
             gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic'),
         }
 
-
+        gl.enable(gl.CULL_FACE);
+        gl.cullFace(gl.BACK);
     }
 
     /**

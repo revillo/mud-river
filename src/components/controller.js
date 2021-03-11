@@ -1,10 +1,11 @@
+import { EntityComponent } from "../game/game-context.js";
 import { vec2, vec3, quat, mat4 } from "../glm/index.js";
-import { Vector3 } from "../math/index.js";
+import { Quaternion, Vector3 } from "../math/index.js";
 import { Body } from "./body.js";
 import { Camera } from "./camera.js";
 import { Transform } from "./transform.js";
 
-export class FreeController
+export class FreeController extends EntityComponent
 {
     cameraAngles = vec2.create();
     transform = null;
@@ -46,13 +47,13 @@ export class FreeController
     }
 }
 
-//FreeController.updateInterval = 0;
-FreeController.selfAware = true;
 FreeController.inputAware = true;
 
-const tempQuat = quat.create();
+const tempQuat = Quaternion.new();
+const tempVec3 = Vector3.new();
 
-export class CharacterController
+
+export class CharacterController extends EntityComponent
 {
 
     runForce = 30;
@@ -68,12 +69,12 @@ export class CharacterController
 
     start()
     {
-        this.ensure(Transform, Body);
+        this.entity.ensure(Transform, Body);
 
-        this.camera = this.createChild(Camera, Transform);
-        this.camera.get(Transform).setPosition(0, this.height, 0);
+        this.camera = this.entity.createChild(Camera, Transform);
+        this.camera.get(Transform).setLocalPosition(0, this.height, 0);
 
-        const P = this.PHYSICS;
+        const P = this.context.PHYSICS;
         this.sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
 
         this.capsuleColliderDesc = P.ColliderDesc.capsule(this.halfHeight, 0.2)
@@ -103,10 +104,10 @@ export class CharacterController
 
     
             quat.fromEuler(tempQuat, 0, this.lookAngles[0], 0);
-            this.get(Transform).setRotation(tempQuat);
+            this.get(Transform).setLocalRotation(tempQuat);
 
             quat.fromEuler(tempQuat, this.lookAngles[1], 0, 0);
-            this.camera.get(Transform).setRotation(tempQuat);
+            this.camera.get(Transform).setLocalRotation(tempQuat);
         }
        
     }
@@ -120,33 +121,22 @@ export class CharacterController
     { 
         if (button.isPressed)
         {
-            vec3.set(this.movement, 0, this.jumpImpulse, 0);
+            this.movement.set(0, this.jumpImpulse, 0);
             this.body.applyImpulse(this.movement);
         }  
     }
 
     detectGround()
     {
-        /*
-        const ray = this.PHYSICS.tempRay;
-        ray.dir.set(0, -1, 0);
-        ray.origin.set();
-        */
+        const P = this.context.PHYSICS;
 
-        //this.physicsWorld.castRayAndGetNormal(this.physicsWorld.colliders, )
-        const P = this.PHYSICS;
-
-        this.get(Transform).copyWorldMatrix(mat4.temp0);
-        mat4.decompose(quat.temp0, vec3.temp0, vec3.temp1, mat4.temp0);
-
+        this.get(Transform).worldMatrix.decompose(tempVec3, tempQuat);
+    
         let sweepVel = P.vec3_1.set(0, -1, 0);
-        let sweepPos = P.vec3_0.fromArray(vec3.temp0);
-        let sweepRot = P.quat_0.fromArray(quat.temp0);
-
-        sweepPos.y += this.halfHeight + 0.01;
+        tempVec3.y += this.halfHeight + 0.01;
 
         let maxDist = this.groundMaxDistance;
-        let collisionResult = this.physicsWorld.castShape(this.physicsWorld.colliders, sweepPos, sweepRot, sweepVel, 
+        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, tempVec3, tempQuat, sweepVel, 
             this.sweepShape, maxDist, this.sweepFilter);
         
         if (collisionResult)
@@ -154,7 +144,6 @@ export class CharacterController
             this.body.setLinearDamping(10);
             this.onGround = true;
             this.groundDistance = collisionResult.toi;
-            
    
             let cushionY = Math.max(0.0, this.groundMaxDistance - this.groundDistance) / this.groundMaxDistance;
             cushionY = Math.pow(cushionY, 0.5) * this.cushionForce; 
@@ -168,17 +157,6 @@ export class CharacterController
             this.onGround = false;
         }
 
-    }
-
-    getReticleTranslation(out, distance)
-    {
-
-        this.camera.get(Transform).getWorldMatrix(Mat4.temp0);
-        vec3.set(out, 0, 0, -distance);
-        vec3.transformMat4(out, out, mat4.temp0);
-
-
-    
     }
 
     update(dt, clock)
@@ -208,13 +186,9 @@ export class CharacterController
             this.movement[0] += 1;
         }
 
-
+        this.movement.rotateMat4(this.get(Transform).worldMatrix);
         vec3.setLength(this.movement, this.onGround ? this.runForce : this.glideForce);
-
-        this.get(Transform).rotateVec3(this.movement);
-
         this.body.applyForce(this.movement);
-        
     }
 
     destroy()
@@ -223,6 +197,4 @@ export class CharacterController
     }
 }
 
-CharacterController.physicsAware = true;
-CharacterController.selfAware = true;
 CharacterController.inputAware = true;

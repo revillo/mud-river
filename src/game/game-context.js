@@ -6,6 +6,48 @@ import { GPUContext } from "../buff/gpu.js";
 //import { Rasterizer } from "../buff/rasterizer.js";
 import { EntityPool, Entity } from "../ecso/ecso.js";
 
+/**
+ * @callback EntityCallback
+ * @param {GameEntity}
+ * @return {boolean} - return false to skip this entity's children 
+ */
+
+ /**
+  * @class
+  */
+export class EntityComponent
+{
+    /**
+     * @return {GameEntity}
+     */
+    get entity()
+    {
+        return this._entity;
+    }
+
+    /**
+     * @return {GameContext}
+     */
+    get context()
+    {
+        return this._entity.context;
+    }
+
+    /**
+     * @template ComponentType
+     * @param {new ComponentType} ComponentType 
+     * @return {ComponentType} component
+     */
+    get(ComponentType)
+    {
+        return this._entity.get(ComponentType);
+    }
+}
+
+
+/**
+ * @class
+ */
 export class GameEntity extends Entity
 {
     constructor(context)
@@ -15,11 +57,19 @@ export class GameEntity extends Entity
         this._children = new Set();
     }
 
+    /**
+     * @return {GameEntity}
+     */
     get parent()
     {
         return this._parent;
     }
 
+    /**
+     * 
+     * @param  {...any} Components 
+     * @return {GameEntity}
+     */
     createChild(...Components)
     {
         const e = this._context.create(...Components);
@@ -40,11 +90,17 @@ export class GameEntity extends Entity
             entity._children.add(this);
     }
 
+    /**
+     * 
+     * @param {EntityCallback} fn 
+     * @param {boolean} recurse 
+     */
     eachChild(fn, recurse = false)
     {
         for (let child of this._children)
         {
-            fn(child)
+            if(fn(child) === false) continue;
+
             recurse && child.eachChild(fn, true);
         }
     }
@@ -86,6 +142,10 @@ export class EventManager
     }
 }
 
+/**
+ * @class
+ * @extends {EntityPool}
+ */
 export class GameContext extends EntityPool
 {
     constructor(canvas)
@@ -105,9 +165,16 @@ export class GameContext extends EntityPool
             this.gltfManager = new GLTFManager(this.bufferManager, this.textureManager);
             this.programManager = new ProgramManager(this.gpu);
         }
+        
         this.updaters = new Map();
+        this.systems = [];
 
         this.initPhysics();
+
+        
+        this.views = {
+            static_moved : this.with('static', 'moved')
+        }
 
         window.context = this;
     }
@@ -197,32 +264,32 @@ export class GameContext extends EntityPool
         this.physicsWorld = new PHYSICS.World(gravity);
         this.cullWorld = new PHYSICS.World(gravity);     
         this.cullMap = new Map();
+        this.dynamicMap = new Map();
     }
 
     addNewType(Component)
     {
         super.addNewType(Component);
 
+        //System
+        if (Component.views)
+        {
+            for (let name in Component.views)
+            {
+                Component.views[name] = this.with(...Component.views[name])
+            }
+        }
+
+        if (Component.update)
+        {
+            this.systems.push(Component);
+        }
+
         if (!Component.prototype) return;
 
         if (Component.prototype.update)
         {
             this.updaters.set(Component, this.with(Component));
-        }
-
-        if (Component.selfAware)
-        {
-            Object.defineProperty(Component.prototype, "parent", {
-                get : function() {return this._entity.parent},
-                set : function(parent) {this._entity.parent = parent}
-            });
-
-            Component.prototype.createChild = function(...Components)
-            {
-                const e = this.context.create(...Components);
-                e.parent = this.entity;
-                return e;
-            }
         }
 
         const inputManager = this.inputManager;
@@ -266,20 +333,6 @@ export class GameContext extends EntityPool
                 inputManager.removeListener(action, handler);
             }
         }
-
-        const PHYSICS = this.PHYSICS;
-        const physicsWorld = this.physicsWorld;
-
-        if (Component.physicsAware)
-        {
-            Object.defineProperty(Component.prototype, "PHYSICS", {
-                get : function() {return PHYSICS}
-            })
-            
-            Object.defineProperty(Component.prototype, "physicsWorld", {
-                get : function() {return physicsWorld}
-            })
-        }
     }
 
     set renderer(r)
@@ -287,10 +340,19 @@ export class GameContext extends EntityPool
         this._renderer = r;
     }
 
+    /**
+     * 
+     * @param  {...any} Components 
+     * @return {GameEntity}
+     */
+    create(...Components)
+    {
+        return super.create(...Components);
+    }
+
     update(dt, clock)
     {
-        this.physicsWorld.timestep = dt;
-        this.physicsWorld.step();
+        this.systems.forEach(sys => sys.update(dt, clock, this));
 
         for (let [Type, view] of this.updaters)
         {
@@ -303,5 +365,13 @@ export class GameContext extends EntityPool
         {
             this._renderer.render();
         }
+
+        this.clear("moved");
+    }
+
+    _add(entity, C)
+    {
+        super._add(entity, C)
+        C.prototype && (entity.get(C)._entity = entity);
     }
 }

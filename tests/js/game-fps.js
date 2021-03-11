@@ -1,6 +1,5 @@
 import {WebApp} from "../../src/app/webapp.js"
-//import { GameEntity } from "../../src/ecso/ecso.js";
-import {GameContext} from "../../src/game/game-context.js"
+import {GameContext, EntityComponent} from "../../src/game/game-context.js"
 import {GameLayer} from "../../src/app/layers/game-layer.js"
 import {CharacterController, FreeController} from "../../src/components/controller.js"
 import {Camera} from "../../src/components/camera.js"
@@ -9,10 +8,12 @@ import { Body } from "../../src/components/body.js";
 import {ForwardRenderer} from "../../src/game/forward-renderer.js"
 import { ModelRender } from "../../src/components/model-render.js";
 import { Vector3 } from "../../src/math/index.js"
+import { Timer } from "../../src/util/timer.js"
+import { vec3 } from "../../src/glm/index.js"
 
 let tempVec3 = Vector3.new();
 
-class Expiration
+class Expiration extends EntityComponent
 {
     timeLeft = 10;
 
@@ -31,7 +32,6 @@ class Expiration
     }
 }
 
-Expiration.selfAware = true;
 
 class ShootingPlayer extends CharacterController
 {
@@ -45,13 +45,16 @@ class ShootingPlayer extends CharacterController
     {
         if (button.isPressed)
         {
-            const P = this.PHYSICS;
+            const P = this.context.PHYSICS;
 
             let ball = this.context.create(Body, Transform, ModelRender, Expiration);
     
-            this.camera.get(Transform).worldMatrix.copyTranslation(tempVec3);
-            tempVec3.y -= 0.1;
-            ball.get(Transform).setTranslation(tempVec3);
+            const camMat = this.camera.get(Transform).worldMatrix;
+
+            tempVec3.set(0.1, -0.1, -.1);
+            tempVec3.transformMat4(camMat);
+
+            ball.get(Transform).setLocalTranslation(tempVec3);
         
             ball.get(Body).configure(Body.DYNAMIC);
 
@@ -62,8 +65,10 @@ class ShootingPlayer extends CharacterController
                 .setRestitutionCombineRule(P.CoefficientCombineRule.Max)
             );
     
-            this.camera.get(Transform).worldMatrix.copyForward(tempVec3);
+            tempVec3.set(0.0, 0.0, -1.0);
+            tempVec3.rotateMat4(camMat);
             tempVec3.scale(0.05);
+
             ball.get(Body).applyImpulse(tempVec3);
     
             ball.get(ModelRender).setAsset(this.context.gltfManager.fromUrl("gltf/src/ball.gltf"));
@@ -83,10 +88,10 @@ let start = () => {
 
     //Scene
     let cube = gameContext.create(ModelRender, Transform, Body);
-
+    
     let startAsset = gltfManager.fromUrl("gltf/scene/scene.gltf");
 
-    cube.get(Transform).setPosition(0, -1, -5);
+    cube.get(Transform).setLocalPosition(0, -1, -5);
     cube.get(ModelRender).setAsset(startAsset);
     cube.get(Body).configure(Body.STATIC)
     cube.get(Body).setAsset(startAsset);
@@ -118,7 +123,8 @@ let start = () => {
 
     app.start();
 }
-           
+        
+
 if (window.RAPIER)
 {
     start()

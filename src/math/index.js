@@ -33,6 +33,21 @@ export class Vector3 extends Float32Array
         this[1] *= s;
         this[2] *= s;
     }
+
+    rotateMat4(m4)
+    {
+        vec3.rotateMat4(this, this, m4);
+    }
+
+    transformMat4(m4)
+    {
+        vec3.transformMat4(this, this, m4);
+    }
+
+    normalize()
+    {
+        vec3.normalize(this, this);
+    }
 }
 
 /**
@@ -72,6 +87,11 @@ export class Quaternion extends Float32Array
     get w(){return this[3];}
 
     set w(nw){this[3] = nw;}
+
+    normalize()
+    {
+        quat.normalize(this, this);
+    }
 }
 /**
  * @return {Quaternion}
@@ -122,26 +142,16 @@ export class Matrix4 extends Float32Array
         mat4.getScaling(scaleOut, this);
     }
 
-    setMatrix(m)
-    {
-        mat4.copy(this, m);
-    }
-
-    reset()
-    {
-        mat4.identity(this);
-    }
-
-    compose(position, rotation, scale)
-    {
-        mat4.fromRotationTranslationScale(this, rotation, position, scale);
-    }
-
     decompose(outTranslation, outRotation, outScale)
     {
         outTranslation && mat4.getTranslation(outTranslation, this);
         outRotation && mat4.getRotation(outRotation, this);
         outScale && mat4.getScaling(outScale, this);
+    }
+
+    compose(position, rotation, scale)
+    {
+        mat4.fromRotationTranslationScale(this, rotation, position, scale);
     }
 
     translate(translation)
@@ -178,9 +188,24 @@ export class Matrix4 extends Float32Array
         mat4.setScale(this, scale);
     }
 
-    rotateVec3(inout)
+    copy(m)
     {
-        vec3.rotateMat4(inout, inout, this);
+        mat4.copy(this, m);
+    }
+
+    invert()
+    {
+        mat4.invert(this, this);
+    }
+
+    affineInvert()
+    {
+        mat4.affineInvert(this, this);
+    }
+
+    reset()
+    {
+        mat4.identity(this);
     }
 
 }

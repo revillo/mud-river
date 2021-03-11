@@ -1,11 +1,13 @@
 import { Lifetime } from "../assets/assets.js";
 import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
+import { EntityComponent } from "../game/game-context.js";
+import { mat4 } from "../glm/index.js";
 import { Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 
 let tempVec3 = new Vector3();
 
-export class PrimRender
+export class PrimRender extends EntityComponent
 {
 
     setPrim(prim)
@@ -16,7 +18,7 @@ export class PrimRender
 
     addToCullWorld()
     {
-        let P = this.PHYSICS;
+        let P = this.context.PHYSICS;
         const prim = this.prim;
 
         //todo compute
@@ -33,15 +35,7 @@ export class PrimRender
         
         this.collider = this.context.cullWorld.createCollider(colliderDesc, this._cullBody.handle);
 
-        this.context.cullMap.set(this.collider.handle, this.prim);
-    }
-
-    //todo remove
-    update(dt)
-    {
-        this.get(Transform).copyWorldMatrix(this.prim.locals.model);
-        this.get(Transform).worldMatrix.copyTranslation(tempVec3);
-        this._cullBody.setTranslation(tempVec3);
+        this.context.cullMap.set(this.collider.handle, this);
     }
 
     destroy()
@@ -49,17 +43,26 @@ export class PrimRender
         this.context.cullMap.delete(this.collider.handle);
         this.context.gpu.deleteGeometryBinding(this.prim.binding);
         this.context.cullWorld.removeRigidBody(this._cullBody);
-        
-        //todo
-        //prim.locals.destroy();
     }
-
 }
 
-PrimRender.selfAware = true;
-PrimRender.physicsAware = true;
+PrimRender.views = {
+    prim_moved : [PrimRender, "moved"]
+}
 
-export class ModelRender
+PrimRender.update = function(dt, clock, context)
+{
+    this.views.prim_moved(e => {
+        const wm = e.get(Transform).worldMatrix;
+        let primC = e.get(PrimRender);
+        mat4.copy(primC.prim.locals.model, wm);
+        wm.copyTranslation(tempVec3);
+        primC._cullBody.setTranslation(tempVec3);
+    });
+}
+
+
+export class ModelRender extends EntityComponent
 {
     asset = null;
     renderables = [];
@@ -104,7 +107,7 @@ export class ModelRender
                 node.mesh.primitives.forEach(prim =>{
                     let primEntity = thiz.primContainer.createChild(PrimRender, Transform);
                     primEntity.get(PrimRender).setPrim(prims[prim.id]);
-                    primEntity.get(Transform).setMatrix(node.matrix);
+                    primEntity.get(Transform).setLocalMatrix(node.matrix);
                 });
             }
 
@@ -129,7 +132,7 @@ export class ModelRender
             this.primContainer.destroy();
         }
 
-        this.primContainer = this.createChild();
+        this.primContainer = this.entity.createChild();
 
         this.asset = gltfAsset;
 
@@ -143,5 +146,3 @@ export class ModelRender
         this.lifetime.end();
     }
 }
-
-ModelRender.selfAware = true;

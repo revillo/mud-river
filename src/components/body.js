@@ -1,4 +1,5 @@
 import { Lifetime } from "../assets/assets.js";
+import { EntityComponent } from "../game/game-context.js";
 import { mat4, quat, vec3 } from "../glm/index.js";
 import { Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
@@ -6,8 +7,10 @@ import { Transform } from "./transform.js";
 const tempVec3 = new Vector3();
 const tempQuat = new Quaternion();
 
-
-export class Body
+/**
+ * @class
+ */
+export class Body extends EntityComponent
 {
     colliders = [];
     _type = Body.DISABLED;
@@ -20,7 +23,7 @@ export class Body
 
     start()
     {
-        this.ensure(Transform);
+        this.entity.ensure(Transform);
     }
 
     get type()
@@ -46,17 +49,19 @@ export class Body
             return;
         }
 
-        const PHYSICS = this.PHYSICS;
+        const P = this.context.PHYSICS;
 
         this._type = physicsType;
 
         if (this._body)
         {
-            this.physicsWorld.removeRigidBody(this._body);
+            this.context.physicsWorld.removeRigidBody(this._body);
             this._body = null;
         }
 
         var desc;
+
+        this.entity.remove('static', 'dynamic');
 
         switch(physicsType)
         {
@@ -64,15 +69,18 @@ export class Body
             break;
 
             case Body.STATIC:
-            desc = PHYSICS.RigidBodyDesc.newStatic();
+            desc = P.RigidBodyDesc.newStatic();
+            this.entity.add('static');
             break;
 
             case Body.DYNAMIC:
-            desc = PHYSICS.RigidBodyDesc.newDynamic();
+            desc = P.RigidBodyDesc.newDynamic();
+            this.entity.add('static');
             break;
 
             case Body.KINEMATIC:
-            desc = PHYSICS.RigidBodyDesc.newKinematic();
+            desc = P.RigidBodyDesc.newKinematic();
+            this.entity.add('dynamic');
             break;
         }
 
@@ -80,8 +88,8 @@ export class Body
 
         if (desc)
         {
-            this._body = this.physicsWorld.createRigidBody(desc);
-            this._body.entity = this.entity;
+            this._body = this.context.physicsWorld.createRigidBody(desc);
+            this.context.dynamicMap.set(this._body.handle, this);
 
             this.syncTransformToBody();
         }
@@ -91,7 +99,7 @@ export class Body
 
     addCollider(colliderDesc)
     {
-        this.physicsWorld.createCollider(colliderDesc, this._body.handle);
+        this.context.physicsWorld.createCollider(colliderDesc, this._body.handle);
     }    
 
     syncTransformToBody()
@@ -111,22 +119,13 @@ export class Body
 
         if (this.options.lockRotations)
         {
-            this.get(Transform).setTranslation(tempVec3);
+            this.get(Transform).setWorldTranslation(tempVec3);
         }
         else
         {
             var rot = this._body.rotation();
             quat.set(tempQuat, rot.x, rot.y, rot.z, rot.w);
-            this.get(Transform).setTranslationRotation(tempVec3, tempQuat);
-        }
-    }
-
-    //todo remove, use forEachActiveRigidBody
-    update(dt)
-    {
-        if (this._type == Body.DYNAMIC)
-        {
-            this.syncBodyToTransform();
+            this.get(Transform).setWorldTranslationRotation(tempVec3, tempQuat);
         }
     }
 
@@ -142,12 +141,7 @@ export class Body
 
     applyImpulse(impulse)
     {
-        const tvec3 = this.PHYSICS.vec3_0;
-        tvec3.x = impulse[0];
-        tvec3.y = impulse[1];
-        tvec3.z = impulse[2];
-
-        this._body.applyImpulse(tvec3, true);
+        this._body.applyImpulse(impulse, true);
     }
 
     setAsset(gltfAsset)
@@ -159,9 +153,9 @@ export class Body
 
     _processGltfAsset(gltfAsset)
     {
-        const P = this.PHYSICS;
+        const P = this.context.PHYSICS;
         const gltf = gltfAsset.gltf;
-        const world = this.physicsWorld;
+        const world = this.context.physicsWorld;
         const body = this._body;
 
         function nodeHelper(node)
@@ -211,7 +205,8 @@ export class Body
 
         if (this._body)
         {
-            this.physicsWorld.removeRigidBody(this._body);
+            this.context.dynamicMap.delete(this._body.handle);
+            this.context.physicsWorld.removeRigidBody(this._body);
             this._body = null;
         }
 
@@ -223,5 +218,20 @@ Body.STATIC = 1;
 Body.DYNAMIC = 2;
 Body.KINEMATIC = 2;
 
-Body.selfAware = true;
-Body.physicsAware = true;
+Body.views = {
+    static_moved : ['static', 'moved']
+}
+
+Body.update = function(dt, clock, context) 
+{
+    context.physicsWorld.timestep = dt;
+    context.physicsWorld.step();
+    
+    context.physicsWorld.forEachActiveRigidBodyHandle(handle => {
+        context.dynamicMap.get(handle).syncBodyToTransform();
+    });
+
+    this.views.static_moved(e => {
+        e.get(Body).syncTransformToBody();
+    });
+}

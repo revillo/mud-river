@@ -47,3 +47,32 @@ export class Timer
         return this.nowMS() * 0.001;
     }
 }
+
+class TimeTracker
+{
+    constructor()
+    {
+        this.metrics = new Map();
+    }
+
+    start(name)
+    {
+        if (!this.metrics.has(name))
+        {
+            this.metrics.set(name, {
+                totalTime : 0.0,
+                count: 0,
+                timer : new Timer
+            })
+        }
+
+        this.metrics.get(name).timer.tickMS();
+    }
+
+    stop(name)
+    {
+        const metric = this.metrics.get(name);
+        metric.count += 1;
+        metric.totalTime += metric.timer.tickMS();
+    }
+}

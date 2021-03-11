@@ -51,8 +51,10 @@ export class ForwardRenderer
         this.globalBlock.bind(program);
     }
 
-    renderPrim(prim)
+    renderPrim(primComponent)
     {
+        const prim = primComponent.prim;
+
         const program = prim.program;
         if(program.use() || this.firstPrim)
         {

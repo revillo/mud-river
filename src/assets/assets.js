@@ -87,6 +87,9 @@ export class AssetManager //Abstract
         this.assets = new Map();
     }
 
+    /**
+     * @param {string} url 
+     */
     fromUrl(url)
     {
         const assets = this.assets;

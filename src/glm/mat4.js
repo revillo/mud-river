@@ -2208,6 +2208,68 @@ export function setTranslationRotation(inout, p, q)
   fromRotationTranslationScale(inout, q, p, tempScale);
 }
 
+/**
+ * Inverts an affine matrix
+ *
+ * @param {mat4} out the receiving matrix
+ * @param {ReadonlyMat4} a the source matrix
+ * @returns {mat4} out
+ */
+export function affineInvert(out, a)
+{
+  let a00 = a[0],
+      a01 = a[1],
+      a02 = a[2];
+
+  let a10 = a[4],
+      a11 = a[5],
+      a12 = a[6];
+  
+  let a20 = a[8],
+      a21 = a[9],
+      a22 = a[10];
+
+  let b01 = a22 * a11 - a12 * a21;
+  let b11 = -a22 * a10 + a12 * a20;
+  let b21 = a21 * a10 - a11 * a20;
+
+  // Calculate the determinant
+  let det = a00 * b01 + a01 * b11 + a02 * b21;
+
+  if (!det) {
+    return null;
+  }
+
+  let t0 = -a[12],
+      t1 = -a[13],
+      t2 = -a[14];
+
+  det = 1.0 / det;
+
+  out[0] = b01 * det;
+  out[1] = (-a22 * a01 + a02 * a21) * det;
+  out[2] = (a12 * a01 - a02 * a11) * det;
+  out[3] = 0;
+
+  out[4] = b11 * det;
+  out[5] = (a22 * a00 - a02 * a20) * det;
+  out[6] = (-a12 * a00 + a02 * a10) * det;
+  out[7] = 0;
+
+  out[8] = b21 * det;
+  out[9] = (-a21 * a00 + a01 * a20) * det;
+  out[10] = (a11 * a00 - a01 * a10) * det;
+  out[11] = 0;
+
+  out[12] = out[0] * t0 + out[4] * t1 + out[8] * t2;
+  out[13] = out[1] * t0 + out[5] * t1 + out[9] * t2;
+  out[14] = out[2] * t0 + out[6] * t1 + out[10] * t2;
+
+  out[15] = 1;
+
+  return out;
+}
+
 
 const temp0 = create();
 const temp1 = create();
