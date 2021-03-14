@@ -7,6 +7,8 @@ export class ShaderMod
         this.mod = mod;
         this.requires = this.mod.requires || [];
         delete this.mod.requires;
+        this.rankBias = (this.mod.rankBias || 0) / 1000;
+        delete this.mod.rankBias;
     }
 
     apply(builder)
@@ -38,6 +40,6 @@ export class ShaderMod
             this.rank = this.requires.reduce((r,m)=>Math.max(r,m.getRank()), 0) + 1;           
         }
 
-        return this.rank
+        return this.rank + this.rankBias;
     }
 }

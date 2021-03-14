@@ -54,6 +54,8 @@ export class Vector3 extends Float32Array
  * @return {Vector3}
  */
 Vector3.new = () => new Vector3;
+Vector3.DOWN = new Vector3(0, -1, 0);
+Vector3.UP = new Vector3(0, 1, 0);
 
 /**
  * @class
@@ -91,6 +93,21 @@ export class Quaternion extends Float32Array
     normalize()
     {
         quat.normalize(this, this);
+    }
+
+    set(x, y, z, w)
+    {
+        quat.set(this, x, y, z, w);
+    }
+
+    /**
+     * 
+     * @param {Quaternion} q - quat to slerp to
+     * @param {number} t - interpolant 
+     */
+    slerpTo(q, t)
+    {
+        quat.slerp(this, this, q, t);
     }
 }
 /**

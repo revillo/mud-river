@@ -34,8 +34,8 @@ export class App
             this[fnName](event);
         }
 
-        this.layers.forEach(layerBundle => {
-
+        for (let layerBundle of this.layers)
+        {
             let layer = layerBundle.appLayer;
             //console.log(fnName, layer[fnName]);
 
@@ -43,7 +43,7 @@ export class App
             {
                 return;
             }
-        })
+        }
     }
 
 }

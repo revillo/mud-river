@@ -48,7 +48,7 @@ export class Timer
     }
 }
 
-class TimeTracker
+export class FrameMetrics
 {
     constructor()
     {
@@ -62,7 +62,9 @@ class TimeTracker
             this.metrics.set(name, {
                 totalTime : 0.0,
                 count: 0,
-                timer : new Timer
+                timer : new Timer,
+                fps : 100,
+                ms : 1
             })
         }
 
@@ -72,7 +74,15 @@ class TimeTracker
     stop(name)
     {
         const metric = this.metrics.get(name);
-        metric.count += 1;
-        metric.totalTime += metric.timer.tickMS();
+        //metric.count += 1;
+        //metric.totalTime += metric.timer.tickMS();
+
+        let d = metric.timer.tickMS();
+
+        if (d)
+        {
+            metric.ms = Math.lerp(metric.ms, d, 0.1);
+            metric.fps = Math.lerp(metric.fps, (1000/d), 0.1);
+        }
     }
 }

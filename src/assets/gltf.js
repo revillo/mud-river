@@ -5,21 +5,47 @@ import { Vector3 } from "../math/index.js";
 import { prune } from "../util/object.js";
 import { Asset, AssetManager } from "./assets.js";
 
-const GLTFAttribute =
+const GLTFEnum =
+{
+    TRANSLATION : 0,
+    ROTATION : 1,
+    SCALE : 2,
+    LINEAR : 3,
+    CUBIC_SPLINE: 4,
+    STEP : 5
+}
+
+export {GLTFEnum}
+
+const GLTFEnumMap =
+{
+    translation : GLTFEnum.TRANSLATION,
+    rotation : GLTFEnum.ROTATION,
+    scale : GLTFEnum.SCALE,
+    LINEAR : GLTFEnum.LINEAR,
+    CUBICSPLINE : GLTFEnum.CUBIC_SPLINE,
+    STEP : GLTFEnum.STEP
+}
+
+const GLTFAttributeMap =
 {
     POSITION : DefaultAttributes.POSITION,
     NORMAL : DefaultAttributes.NORMAL,
     TEXCOORD_0 : DefaultAttributes.UV0,
-    TEXCOORD_1 : DefaultAttributes.UV1
+    TEXCOORD_1 : DefaultAttributes.UV1,
+    WEIGHTS_0 : DefaultAttributes.JOINT_WEIGHTS,
+    JOINTS_0 : DefaultAttributes.JOINT_INDICES
 }
 
-const GLTFType =
+const GLTFTypeMap =
 {
     VEC3_5126 : BinType.VEC3,
-    VEC2_5126 : BinType.VEC2
+    VEC2_5126 : BinType.VEC2,
+    VEC4_5126 : BinType.VEC4,
+    VEC4_5121 : BinType.U8VEC4
 }
 
-const GLTFIndexType = 
+const GLTFIndexInfo = 
 {
     5123 : {size: 2}, //unsigned short
     5125 : {size: 4} //unsigned int
@@ -60,6 +86,7 @@ export class GLTFAsset extends Asset
             .then(gltf => thiz.processMaterials(gltf))
             .then(gltf => thiz.processMeshes(gltf))
             .then(gltf => thiz.processScene(gltf))
+            .then(gltf => thiz.processAnimations(gltf))
             .then(gltf => {
                 
                 console.log(gltf);
@@ -74,6 +101,71 @@ export class GLTFAsset extends Asset
         return this;
     }
 
+    processAnimations(gltf)
+    {
+        gltf.animationMap = new Map();
+
+        safeEach(gltf.animations, (anim) => {
+
+            anim.duration = 0.0;
+
+            if (anim.name)  
+                gltf.animationMap.set(anim.name, anim);
+
+            safeEach(anim.samplers, (sampler) => {
+                sampler.input = gltf.accessors[sampler.input];
+                sampler.output = gltf.accessors[sampler.output];
+                
+                let timeBuffer = sampler.input.bufferView.cpuBuffer;
+                sampler.times = new Float32Array(timeBuffer.buffer, timeBuffer.byteOffset, 
+                    timeBuffer.byteLength / 4);
+                
+                let lastTime = sampler.times[sampler.times.length-1];
+
+                let keyframeBuffer = sampler.output.bufferView.cpuBuffer;
+                sampler.values = new Float32Array(keyframeBuffer.buffer, keyframeBuffer.byteOffset, 
+                    keyframeBuffer.byteLength / 4);
+
+                sampler.interpolation = GLTFEnumMap[sampler.interpolation || "LINEAR"];
+                anim.duration = Math.max(anim.duration, lastTime);
+            });
+
+
+            anim.channels = anim.channels.filter(channel => channel.target.path == "rotation");
+
+            safeEach(anim.channels, (channel) => {
+                channel.target.node = gltf.nodes[channel.target.node];
+                channel.target.path = GLTFEnumMap[channel.target.path];
+                channel.sampler = anim.samplers[channel.sampler];
+            });
+            
+        });
+
+        safeEach(gltf.skins, skin => {
+
+            let poseAccessor = gltf.accessors[skin.inverseBindMatrices];
+            let poseBuffer = poseAccessor.bufferView.cpuBuffer;
+
+            skin.invBinds = [];
+
+            let numMatrices = poseAccessor.count;
+            skin.invBinds.length = numMatrices;
+
+            for (let i = 0; i < numMatrices; i++)
+            {
+                skin.invBinds[i] = new Float32Array(poseBuffer.buffer, poseBuffer.byteOffset + i * (16 * 4), 16);
+            }
+
+            safeEach(skin.joints, (nodeIndex, i) => {
+                skin.joints[i] = gltf.nodes[nodeIndex]
+                //skin.joints[i].jointIndex = i;
+                //skin.joints[i].invBind = skin.invBinds[i]; 
+            });
+        });
+
+        return Promise.resolve(gltf);
+    }
+
     processScene(gltf)
     {
         
@@ -82,32 +174,37 @@ export class GLTFAsset extends Asset
             const node = gltf.nodes[nodeIndex];
             array[i] = node;
 
-            if (node.mesh == undefined && !node.children) return;
+            node.id = nodeIndex;
 
+            
+            node.localMatrix = mat4.create();
             node.matrix = mat4.create();
 
             if (node.translation)
             {
-                mat4.setTranslation(node.matrix, node.translation);
+                mat4.setTranslation(node.localMatrix, node.translation);
             }
 
             if (node.rotation)
             {
-                mat4.setRotation(node.matrix, node.rotation);
+                mat4.setRotation(node.localMatrix, node.rotation);
             }
 
-            mat4.multiply(node.matrix, parentMatrix, node.matrix);
+            mat4.multiply(node.matrix, parentMatrix, node.localMatrix);
 
             if (node.mesh != undefined)
             {
                 node.mesh = gltf.meshes[node.mesh];
             }
 
-            if (node.translation);
-
             if (node.children)
             {
                 node.children.forEach((nodeIndex, index) => nodeHelper(nodeIndex, index, node.children, node.matrix));
+            }
+
+            if (node.skin != undefined)
+            {
+                node.skin = gltf.skins[node.skin];
             }
         }
 
@@ -177,7 +274,7 @@ export class GLTFAsset extends Asset
                 {
                     const accessor = gltf.accessors[primitive.attributes[attribName]];
                     
-                    const myAttribute = GLTFAttribute[attribName];
+                    const myAttribute = GLTFAttributeMap[attribName];
 
                     const bv = accessor.bufferView;
 
@@ -192,7 +289,7 @@ export class GLTFAsset extends Asset
                         stride : bv.byteStride || 0,
                         location : myAttribute.location,
                         isNormalized : accessor.isNormalized || false,
-                        type : GLTFType[accessor.type + "_" + accessor.componentType],
+                        type : GLTFTypeMap[accessor.type + "_" + accessor.componentType],
                         instanced : 0
                     }
                 }
@@ -209,7 +306,7 @@ export class GLTFAsset extends Asset
                     buffer : ibv.gpuView.buffer,
                     count : indexAccessor.count,
                     type : indexAccessor.componentType,
-                    start : ibv.gpuView.offset / GLTFIndexType[indexAccessor.componentType].size,
+                    start : ibv.gpuView.offset / GLTFIndexInfo[indexAccessor.componentType].size,
                 }
 
                 thiz.createPrimitiveCollisonData(gltf, primitive);

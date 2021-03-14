@@ -5,6 +5,7 @@ import { BufferManager } from "../buff/buffer.js";
 import { GPUContext } from "../buff/gpu.js";
 //import { Rasterizer } from "../buff/rasterizer.js";
 import { EntityPool, Entity } from "../ecso/ecso.js";
+import { FrameMetrics } from "../util/timer.js";
 
 /**
  * @callback EntityCallback
@@ -54,6 +55,10 @@ export class GameEntity extends Entity
     {
         super(context);
         this._parent = null;
+
+        /**
+         * @type {Set<GameEntity>}
+         */
         this._children = new Set();
     }
 
@@ -93,22 +98,22 @@ export class GameEntity extends Entity
     /**
      * 
      * @param {EntityCallback} fn 
-     * @param {boolean} recurse 
      */
-    eachChild(fn, recurse = false)
+    eachChild(fn, ...args)
     {
         for (let child of this._children)
         {
-            if(fn(child) === false) continue;
-
-            recurse && child.eachChild(fn, true);
+            if(fn(child, ...args) === true) 
+            {
+                child.eachChild(fn, ...args);
+            }
         }
     }
 
     destroy()
     {
         this.parent = null;
-        this.eachChild(child => child.destroy(), true);
+        this.eachChild(child => child.destroy());
         super.destroy();
     }
 }
@@ -151,7 +156,7 @@ export class GameContext extends EntityPool
     constructor(canvas)
     {
         super(GameEntity);
-
+        this.root = this.create();
         this.eventManager = new EventManager;
         this.canvas = canvas;
 
@@ -177,64 +182,14 @@ export class GameContext extends EntityPool
         }
 
         window.context = this;
+
+        this.frameTimers = new FrameMetrics();
     }
 
     initPhysics()
     {
         const PHYSICS = window.RAPIER;
         this.PHYSICS = PHYSICS;
-
-        PHYSICS.vec3_0 = new PHYSICS.Vector3();
-        PHYSICS.vec3_1 = new PHYSICS.Vector3();
-        PHYSICS.vec3_2 = new PHYSICS.Vector3();
-
-        PHYSICS.quat_0 = new PHYSICS.Quaternion();
-        PHYSICS.quat_1 = new PHYSICS.Quaternion();
-        PHYSICS.quat_2 = new PHYSICS.Quaternion();
-
-        PHYSICS.ray_0 = new PHYSICS.Ray(new this.PHYSICS.Vector3(), new this.PHYSICS.Vector3());
-
-        Object.assign(PHYSICS.Vector3.prototype, {
-            set: function(x,y,z)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-
-                return this;
-            },
-
-            fromArray: function(v3)
-            {
-                this.x = v3[0];
-                this.y = v3[1];
-                this.z = v3[2];
-
-                return this;
-            }
-        });
-
-        Object.assign(PHYSICS.Quaternion.prototype, {
-            set: function(x,y,z,w)
-            {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-                this.w = w;
-
-                return this;
-            },
-
-            fromArray: function(q)
-            {
-                this.x = q[0];
-                this.y = q[1];
-                this.z = q[2];
-                this.w = q[3];
-
-                return this;
-            }
-        });
 
         PHYSICS.GROUP_STATIC = 0;
         PHYSICS.GROUP_DYNAMIC = 1;
@@ -244,19 +199,16 @@ export class GameContext extends EntityPool
         PHYSICS.getCollisionGroups = function(myGroups, interactGroups)
         {
             var result = 0;
-
             for (let g of myGroups)
             {
                 result += (1 << g);
             }
-
             result = result << 16;
             
             for (let f of interactGroups)
             {
                 result += (1 << f);
             }
-
             return result;
         }
 
@@ -291,48 +243,6 @@ export class GameContext extends EntityPool
         {
             this.updaters.set(Component, this.with(Component));
         }
-
-        const inputManager = this.inputManager;
-
-        if (Component.inputAware)
-        {
-            Component.prototype.isPressed = function(action)
-            {
-                return inputManager.isPressed(action);
-            }
-
-            Object.defineProperty(Component.prototype, "inputManager", {
-                get : function() {return inputManager}
-            });
-
-            
-            Component.prototype.bindInput = function(action, handler)
-            {
-                this._inputListeners = this._inputListeners || [];
-                handler = handler.bind(this);
-
-                this._inputListeners.push({action, handler});
-                inputManager.addListener(action, handler);
-            }
-
-            Component.prototype.unbindInputs = function()
-            {
-                for (let listener of (this._inputListeners || []))
-                {
-                    inputManager.removeListener(listener.action, listener.handler);
-                }
-            }
-
-            Component.prototype.addInputListener = function(action, handler)
-            {
-                inputManager.addListener(action, handler);
-            }
-
-            Component.prototype.removeInputListener = function(action, handler)
-            {
-                inputManager.removeListener(action, handler);
-            }
-        }
     }
 
     set renderer(r)
@@ -347,26 +257,37 @@ export class GameContext extends EntityPool
      */
     create(...Components)
     {
-        return super.create(...Components);
+        let e = super.create(...Components);
+        e.parent = this.root;
+        return e;
     }
 
     update(dt, clock)
     {
-        this.systems.forEach(sys => sys.update(dt, clock, this));
+        this.frameTimers.start("frame");
 
+        this.frameTimers.start("sys")
+        this.systems.forEach(sys => sys.update(dt, clock, this));
+        this.frameTimers.stop("sys");
+
+        this.frameTimers.start("comp");
         for (let [Type, view] of this.updaters)
         {
             view(e => {
                 e.get(Type).update(dt, clock);
             });
         }
+        this.frameTimers.stop("comp");
 
+        this.frameTimers.start("render");
         if (this._renderer)
         {
             this._renderer.render();
         }
+        this.frameTimers.stop("render");
 
         this.clear("moved");
+        this.frameTimers.stop("frame");
     }
 
     _add(entity, C)

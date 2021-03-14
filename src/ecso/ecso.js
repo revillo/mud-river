@@ -42,12 +42,20 @@ export class Entity
      */
     has(...Components)
     {        
-        var res = true;
         for (let C of Components)
         {
-            res &= C.prototype ? (this.components.has(C)) : this._context.has(this, C);
+            let has = C.prototype ? (this.components.has(C)) : this._context.has(this, C);
+            if (!has) return false;
         }
-        return res;
+        return true;
+    }
+
+    each(callback)
+    {
+        for (let [C, instance] of this.components)
+        {
+            callback(C, this.components.get(C, instance))
+        }
     }
 
     ensure(...Components)
@@ -104,7 +112,7 @@ export class EntityPool
     has(entity, Component)
     {
         const set = this.sets.get(Component);
-        return !!(set && set.has(entity)) 
+        return Boolean(set && set.has(entity)) 
     }
 
     ensure(...Components)
@@ -192,7 +200,7 @@ export class EntityPool
             if (C.prototype)
             {
                 
-                let destroy = !!C.prototype.destroy;
+                let destroy = Boolean(C.prototype.destroy);
             
                 if (destroy)
                 {

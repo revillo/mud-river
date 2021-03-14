@@ -1,5 +1,5 @@
 import { BinType } from "../buff/gpu-types.js";
-import { ModelRender, PrimRender } from "../components/model-render.js";
+import { ModelRender, PrimRender, Rig } from "../components/model-render.js";
 import { Transform } from "../components/transform.js";
 import { mat4 } from "../glm/index.js";
 import { Quaternion, Vector3 } from "../math/index.js";
@@ -62,7 +62,11 @@ export class ForwardRenderer
             this.firstPrim = false;
         }
 
-        //this.get(Transform).copyWorldMatrix(prim.locals.model);
+        if (primComponent.entity.parent.has(Rig))
+        {
+            primComponent.entity.parent.get(Rig).bind(program);
+        }
+
         prim.material && prim.material.bindTextures(this.gpu, program);
         prim.locals.bind(program)
         this.gpu.rasterizeMesh(prim.binding, prim.numInstances);   
@@ -80,7 +84,7 @@ export class ForwardRenderer
         const near = this._mainCamera.near;
         const far = this._mainCamera.far;
 
-        let verts = new Float32Array(3 * 8);
+        let verts = this.frustumVerts || new Float32Array(3 * 8);
         let tanY = Math.tan(fovY/2);
         let tanX = Math.tan(fovY * this.aspect/2);
 
@@ -121,13 +125,25 @@ export class ForwardRenderer
         verts[22] = y1;
         verts[23] = -far;
 
+        this.frustumVerts = verts;
         this.frustumShape = new this.context.PHYSICS.ConvexPolyhedron(verts);
-        //this.frustumShape = new this.context.PHYSICS.Cuboid(10,10,10);
     }
 
     render()
     { 
-        this.aspect = this.canvas.width / this.canvas.height;
+        if (!this._mainCamera)
+        {
+            return;
+        }
+
+        let newAspect = this.canvas.width / this.canvas.height;
+
+        if (newAspect != this.aspect)
+        {
+            this.aspect = newAspect;
+            this.computeFrustumShape();
+        }
+
         this.gpu.clear(this.clearColor);
         this.gpu.setViewport(0, 0, this.canvas.width, this.canvas.height);
 

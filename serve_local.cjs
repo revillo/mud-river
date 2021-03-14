@@ -6,5 +6,5 @@ const port = 4000
 app.use(express.static('./'))
 
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`)
+  console.log(`MudRiver running at http://localhost:${port}`)
 })

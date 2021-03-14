@@ -83,7 +83,7 @@ export class GPUContext
     * @param {Shader} vertexShader - vertex shader 
     * @param {Shader} fragmentShader - fragment shader 
     * @param {Object} attributes - map of vertex attributes, usually DefaultAttributes
-    * @return {GLProgram} compiled GLProgram or null, call getErrorTag() for more information
+    * @return {GPUProgram} compiled GLProgram or null, call getErrorTag() for more information
     */
    createProgram(vertexShader, fragmentShader, attributes)
     {
@@ -109,6 +109,13 @@ export class GPUContext
             gl.deleteProgram(program);
             return null;
         }
+
+        // for (let attributeName in attributes)
+        // {
+        //     const attrib = attributes[attributeName];
+        //     let loc = gl.getAttribLocation(program, attrib.id);
+        //     console.log("Bound to", loc, attrib.id);
+        // }
 
         return {
             glProgram : program
@@ -231,6 +238,7 @@ export class GPUContext
              * @type {AttributeLayout}
              */
             const attribute = attributeLayout[attributeName];
+
             gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
             let offset = attribute.offset;
             const type = attribute.type;
@@ -238,9 +246,10 @@ export class GPUContext
             for (let i = 0; i < type.attribLocs; i++)
             {
                 const loc = attribute.location + i;
+  
                 gl.enableVertexAttribArray(loc);
                 
-                if (type.attribType == PrimitiveType.INT)
+                if (type.attribType == PrimitiveType.INT || type == BinType.U8VEC4)
                 {
                     gl.vertexAttribIPointer(loc, type.attribCount, type.attribType, attribute.stride, offset);
                 }

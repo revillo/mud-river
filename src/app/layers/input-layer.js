@@ -105,7 +105,7 @@ export class InputLayer
                 isPressed : true
             });
 
-            e.preventDefault();
+            //e.preventDefault();
         }
         return !!action;
     }

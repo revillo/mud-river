@@ -5,88 +5,135 @@ import { Body } from "./body.js";
 import { Camera } from "./camera.js";
 import { Transform } from "./transform.js";
 
-export class FreeController extends EntityComponent
+export class Controller extends EntityComponent
 {
-    cameraAngles = vec2.create();
-    transform = null;
-    camera = null;
+    isPressed(action)
+    {
+        return this.inputManager.isPressed(action);
+    }
+
+    get inputManager()
+    {
+        return this.context.inputManager;
+    }
+
+    
+    bindInput(action, handler)
+    {
+        this._inputListeners = this._inputListeners || [];
+        handler = handler.bind(this);
+
+        this._inputListeners.push({action, handler});
+        this.inputManager.addListener(action, handler);
+    }
+
+    unbindInputs()
+    {
+        for (let listener of (this._inputListeners || []))
+        {
+            inputManager.removeListener(listener.action, listener.handler);
+        }
+
+        this._inputListeners.length = 0;
+    }
+
+    /*
+
+    Component.prototype.addInputListener = function(action, handler)
+    {
+        inputManager.addListener(action, handler);
+    }
+
+    Component.prototype.removeInputListener = function(action, handler)
+    {
+        inputManager.removeListener(action, handler);
+    }*/
+}
+
+export class FreeController extends Controller
+{
+    _cameraAngles = vec2.create();
+    _camera = null;
+    _movement = vec3.create();
 
     start()
     {
-        this.transform = this.get(Transform);
-        this.camera = this.get(Camera);
-        this.movement = vec3.create();
+        this._camera = this.get(Camera);
     }
 
     update(dt, clock)
     {
-        vec3.zero(this.movement);
+        vec3.zero(this._movement);
 
          if (this.isPressed('Forward'))
         {
-            this.movement[2] -= 1;
+            this._movement[2] -= 1;
         }        
 
         if (this.isPressed('Backward'))
         {
-            this.movement[2] += 1;
+            this._movement[2] += 1;
         }
 
         if (this.isPressed('Left'))
         {
-            this.movement[0] -= 1;
+            this._movement[0] -= 1;
         }
 
         if (this.isPressed('Right'))
         {
-            this.movement[0] += 1;
+            this._movement[0] += 1;
         }
 
-        vec3.setLength(this.movement, dt);
-        this.transform.preTranslate(this.movement);
+        vec3.setLength(this._movement, dt);
+        this.get(Transform).preTranslate(this._movement);
     }
 }
 
-FreeController.inputAware = true;
 
 const tempQuat = Quaternion.new();
 const tempVec3 = Vector3.new();
 
 
-export class CharacterController extends EntityComponent
+export class CharacterController extends Controller
 {
 
     runForce = 30;
     jumpImpulse = 2;
     height = 2.0;
     halfHeight = this.height/2;
-    lookAngles = vec2.create();
-    onGround = false;
-    groundDistance = 0;
     glideForce = 5;
     cushionForce = 5;
     groundMaxDistance = 0.1;
+
+    _onGround = false;
+    _groundDistance = 0;
+    _sweepShape = null;
+    _body = null;
+    _lookAngles = vec2.create();
+    _camera = null;
+    _sweepFilter = null;
 
     start()
     {
         this.entity.ensure(Transform, Body);
 
-        this.camera = this.entity.createChild(Camera, Transform);
-        this.camera.get(Transform).setLocalPosition(0, this.height, 0);
+        this._camera = this.entity.createChild(Camera, Transform);
+        this._camera.get(Transform).setLocalPosition(0, this.height, 0);
 
         const P = this.context.PHYSICS;
-        this.sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
+        this._sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
 
-        this.capsuleColliderDesc = P.ColliderDesc.capsule(this.halfHeight, 0.2)
+        let capsuleColliderDesc = P.ColliderDesc.capsule(this.halfHeight, 0.2)
             .setTranslation(0, this.halfHeight, 0.0)
-            .setCollisionGroups(this.sweepFilter);
+            .setCollisionGroups(this._sweepFilter);
 
-        this.sweepShape = new P.Capsule(this.halfHeight, 0.19);
+        this._sweepShape = new P.Capsule(this.halfHeight, 0.19);
 
-        this.body = this.get(Body);
-        this.body.configure(Body.DYNAMIC, {lockRotations: true});
-        this.body.addCollider(this.capsuleColliderDesc);
-        this.movement = Vector3.new();
+        this._body = this.get(Body);
+        this._body.configure(Body.DYNAMIC, {lockRotations: true});
+        this._body.addCollider(capsuleColliderDesc);
+        this._movement = Vector3.new();
     
         this.bindInput("Jump", this.jump);
         this.bindInput("Look", this.look);
@@ -95,19 +142,24 @@ export class CharacterController extends EntityComponent
         window.player = this;
     }
 
+    get camera()
+    {
+        return this._camera;
+    }
+
     aim(axis)
     {
         if (this.isPressed('Look'))
         {
-            this.lookAngles[0] -= axis.dx * 100;
-            this.lookAngles[1] = Math.clamp( this.lookAngles[1] - axis.dy * 100, -89, 89);
+            this._lookAngles[0] -= axis.dx * 100;
+            this._lookAngles[1] = Math.clamp( this._lookAngles[1] - axis.dy * 100, -89, 89);
 
     
-            quat.fromEuler(tempQuat, 0, this.lookAngles[0], 0);
+            quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
             this.get(Transform).setLocalRotation(tempQuat);
 
-            quat.fromEuler(tempQuat, this.lookAngles[1], 0, 0);
-            this.camera.get(Transform).setLocalRotation(tempQuat);
+            quat.fromEuler(tempQuat, this._lookAngles[1], 0, 0);
+            this._camera.get(Transform).setLocalRotation(tempQuat);
         }
        
     }
@@ -121,8 +173,8 @@ export class CharacterController extends EntityComponent
     { 
         if (button.isPressed)
         {
-            this.movement.set(0, this.jumpImpulse, 0);
-            this.body.applyImpulse(this.movement);
+            this._movement.set(0, this.jumpImpulse, 0);
+            this._body.applyImpulse(this._movement);
         }  
     }
 
@@ -132,29 +184,28 @@ export class CharacterController extends EntityComponent
 
         this.get(Transform).worldMatrix.decompose(tempVec3, tempQuat);
     
-        let sweepVel = P.vec3_1.set(0, -1, 0);
         tempVec3.y += this.halfHeight + 0.01;
 
         let maxDist = this.groundMaxDistance;
-        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, tempVec3, tempQuat, sweepVel, 
-            this.sweepShape, maxDist, this.sweepFilter);
+        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, tempVec3, tempQuat, Vector3.DOWN, 
+            this._sweepShape, maxDist, this._sweepFilter);
         
         if (collisionResult)
         {
-            this.body.setLinearDamping(10);
-            this.onGround = true;
-            this.groundDistance = collisionResult.toi;
+            this._body.setLinearDamping(10);
+            this._onGround = true;
+            this._groundDistance = collisionResult.toi;
    
-            let cushionY = Math.max(0.0, this.groundMaxDistance - this.groundDistance) / this.groundMaxDistance;
+            let cushionY = Math.max(0.0, this.groundMaxDistance - this._groundDistance) / this.groundMaxDistance;
             cushionY = Math.pow(cushionY, 0.5) * this.cushionForce; 
-            vec3.set(this.movement, 0, cushionY, 0);
+            this._movement.set(0, cushionY, 0);
 
-            this.body.applyForce(this.movement);
+            this._body.applyForce(this._movement);
         }
         else
         {
-            this.body.setLinearDamping(0.2);
-            this.onGround = false;
+            this._body.setLinearDamping(0.2);
+            this._onGround = false;
         }
 
     }
@@ -164,31 +215,31 @@ export class CharacterController extends EntityComponent
 
         this.detectGround();
 
-        vec3.zero(this.movement);
+        vec3.zero(this._movement);
 
         if (this.isPressed('Forward'))
         {
-            this.movement[2] -= 1;
+            this._movement[2] -= 1;
         }        
 
         if (this.isPressed('Backward'))
         {
-            this.movement[2] += 1;
+            this._movement[2] += 1;
         }
 
         if (this.isPressed('Left'))
         {
-            this.movement[0] -= 1;
+            this._movement[0] -= 1;
         }
 
         if (this.isPressed('Right'))
         {
-            this.movement[0] += 1;
+            this._movement[0] += 1;
         }
 
-        this.movement.rotateMat4(this.get(Transform).worldMatrix);
-        vec3.setLength(this.movement, this.onGround ? this.runForce : this.glideForce);
-        this.body.applyForce(this.movement);
+        this._movement.rotateMat4(this.get(Transform).worldMatrix);
+        vec3.setLength(this._movement, this._onGround ? this.runForce : this.glideForce);
+        this._body.applyForce(this._movement);
     }
 
     destroy()
@@ -196,5 +247,3 @@ export class CharacterController extends EntityComponent
         this.unbindInputs();
     }
 }
-
-CharacterController.inputAware = true;

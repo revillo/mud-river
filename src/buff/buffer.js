@@ -126,14 +126,36 @@ export class UniformBlockBuffer extends BlockBuffer
         super(count, schema);
         this.name = name;
 
-        this.uniformPrefix = "u_" + this.name + ".";
+        this.uniformPrefix = `u_${this.name}.`;
 
         for (let prop of this.schema)
         {
-             prop.bindName = (this.uniformPrefix + prop.name);
+            prop.bindName = (this.uniformPrefix + prop.name);
         }
     }
 
+    /**
+     * Bind entire buffer as a struct of arrays
+     * @param {RasterProgram} program 
+     */
+    bindSOA(program)
+    {
+        for (let prop of this.schema)
+        {
+            const type = prop.type;
+
+            for (let i = 0; i < this.count; i++)
+            {
+                this.gpu.bindUniformValue(program.gpuProgram, type, `${prop.bindName}[${i}]`, this.getBlock(i)[prop.name]);
+            }
+        }
+    }
+
+    /**
+     * Bind one indexed block as a uniform
+     * @param {number} index 
+     * @param {RasterProgram} program 
+     */
     bindUniformBlock(index, program)
     {
         let block = this.getBlock(index);

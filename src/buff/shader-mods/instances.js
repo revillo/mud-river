@@ -13,6 +13,8 @@ const mod = {
     vertexMain : [`
     worldMatrix = worldMatrix * a_instanceMatrix;
     `],
+
+    rankBias : 10
 };
 
 

@@ -7,8 +7,8 @@ const DefaultAttributes =
     ,UV0 : {id: "a_uv0", type: BinType.VEC2}
     ,UV1 : {id: "a_uv1", type: BinType.VEC2}
     ,TANGENT : {id: "a_tangent", type: BinType.VEC3}
-    ,BONE_WEIGHTS : {id: "a_boneWeights", type: BinType.VEC4}
-    ,BONE_INDICES : {id: "a_boneIndices", type: BinType.IVEC4}
+    ,JOINT_WEIGHTS : {id: "a_jointWeights", type: BinType.VEC4}
+    ,JOINT_INDICES : {id: "a_jointIndices", type: BinType.U8VEC4}
     ,INSTANCE_MATRIX : {id : "a_instanceMatrix", type : BinType.MAT4}
     ,INSTANCE_COLOR : {id : "a_instanceColor", type : BinType.VEC4}
 }

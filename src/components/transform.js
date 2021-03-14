@@ -15,7 +15,10 @@ export class Transform extends EntityComponent
 
     _dirty = true;
 
-
+    start()
+    {
+        this.entity.add("moved");
+    }
 
     //todo optimize - mark children dirty
     _fixDirty()
@@ -28,7 +31,7 @@ export class Transform extends EntityComponent
 
         if (parent && parent.has(Transform))
         {
-            mat4.multiply(this._worldMatrix, parent.get(Transform).worldMatrix, this._localMatrix); 
+            mat4.affineMultiply(this._worldMatrix, parent.get(Transform).worldMatrix, this._localMatrix); 
         }
         else
         {
@@ -87,7 +90,7 @@ export class Transform extends EntityComponent
     _fixLocal()
     {
         if(this.getInverseParent(this._localMatrix))
-            mat4.multiply(this._localMatrix, this._localMatrix, this._worldMatrix);
+            mat4.affineMultiply(this._localMatrix, this._localMatrix, this._worldMatrix);
         else
             mat4.copy(this._localMatrix, this._worldMatrix);
         this._markChildrenDirty();
@@ -120,7 +123,10 @@ export class Transform extends EntityComponent
                 e.get(Transform)._markDirty();
                 return false;
             }
-        }, true);
+            
+            e.add("moved");
+            return true;
+        });
     }
 
     _markDirty()
@@ -137,6 +143,7 @@ export class Transform extends EntityComponent
         this._dirty && this._fixDirty();
         return this._worldMatrix;
     }
-    
-
 }
+
+
+Transform.icon = "Transform"

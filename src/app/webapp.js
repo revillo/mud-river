@@ -13,6 +13,12 @@ export class WebApp extends App
                   
         this.mainCanvas = document.createElement("canvas");
         document.body.appendChild(this.mainCanvas);
+        this.mainCanvas.style.zIndex = "-1";
+        this.mainCanvas.style.position = "fixed";
+        this.mainCanvas.style.top = 0;
+        this.mainCanvas.style.left = 0;
+        this.mainCanvas.style.width = "100%"
+        this.mainCanvas.style.height = "100%"
 
         
         this._addEvents(['load', 'resize', 'mousewheel', 'mouseup', 'mousedown', 'mousemove', 'keydown', 'keyup']);
@@ -26,6 +32,7 @@ export class WebApp extends App
             this.docLoaded = true;
         }
 
+        window.app = this;
       
         this.on_resize();
     }

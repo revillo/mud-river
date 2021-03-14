@@ -22,7 +22,9 @@ const mod = {
 
     fragmentMain : [`
         finalColor.rgb = normalize(v_PerFragment.worldNormal) * 0.5 + vec3(0.5);
-    `]
+    `],
+
+    rankBias : 30
 };
 
 

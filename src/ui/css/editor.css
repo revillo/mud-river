@@ -1,0 +1,42 @@
+button {
+    background: transparent;
+    border-radius: 0.5em;
+    font-size: 0.5rem;
+    margin: 1px;
+    border: 1px solid white;
+    color: white;
+}
+
+button img {
+    width: 0.5rem;
+    height: 0.5rem;
+}
+
+button:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+input {
+    background: black;
+    color: white;
+    border: none;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 12px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    border: none;
+}

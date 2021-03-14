@@ -52,12 +52,14 @@ if (!Math.hypot)
   };
 
 
-if (!Math.clamp)
+Math.clamp = function(num, lo, hi)
 {
-  Math.clamp = function(num, lo, hi)
-  {
-    if (num < lo) return lo;
-    if (num > hi) return hi;
-    return num;
-  }
+  if (num < lo) return lo;
+  if (num > hi) return hi;
+  return num;
+}
+
+Math.lerp = function(a, b, t)
+{
+  return a * (1-t) + b * t;
 }
