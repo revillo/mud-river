@@ -2,6 +2,9 @@ import { BinType } from "../gpu-types.js";
 import {ShaderMod} from "./shader-mod.js"
 
 const mod = {
+
+    id : "skin",
+
     defines : [
         ['HAS_SKIN',  1],
         ['MAX_JOINTS', 120]

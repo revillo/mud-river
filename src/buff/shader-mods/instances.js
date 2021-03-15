@@ -2,6 +2,9 @@ import { BinType } from "../gpu-types.js";
 import {ShaderMod} from "./shader-mod.js"
 
 const mod = {
+
+    id : "instances",
+
     defines : [
         ['HAS_INSTANCES' , 1]
     ],

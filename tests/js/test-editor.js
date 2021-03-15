@@ -11,6 +11,7 @@ import {ForwardRenderer} from "../../src/game/forward-renderer.js"
 import { ModelRender } from "../../src/components/model-render.js";
 import { Vector3 } from "../../src/math/index.js"
 import {EditorLayer} from "../../src/app/layers/editor-layer.js"
+import { ShaderNormals } from "../../src/buff/shader-mods/normals.js"
 
 let tempVec3 = Vector3.new();
 
@@ -40,43 +41,38 @@ class ShootingPlayer extends CharacterController
     {
         super.start();
         this.bindInput("Use", this.shootBall)
+        this._ballAsset = this.context.gltfManager.fromUrl("gltf/src/ball.gltf");
+        const P = this.context.PHYSICS;
+        this._ballCollider = P.ColliderDesc.ball(0.1)
+            .setCollisionGroups(P.getCollisionGroups([P.GROUP_DYNAMIC], [P.GROUP_DYNAMIC, P.GROUP_STATIC]))
+            .setRestitution(0.7)
+            .setRestitutionCombineRule(P.CoefficientCombineRule.Max);
     }
 
     shootBall(button)
     {
         if (button.isPressed)
         {
-            const P = this.context.PHYSICS;
-
             let ball = this.context.create(Body, Transform, ModelRender, Expiration);
     
-            const camMat = this.camera.get(Transform).worldMatrix;
+            const camMat = this._camera.get(Transform).worldMatrix;
 
             tempVec3.set(0.1, -0.1, -.1);
             tempVec3.transformMat4(camMat);
-
             ball.get(Transform).setLocalTranslation(tempVec3);
-        
+            
             ball.get(Body).configure(Body.DYNAMIC);
-
-            ball.get(Body).addCollider (
-                P.ColliderDesc.ball(0.1)
-                .setCollisionGroups(P.getCollisionGroups([P.GROUP_DYNAMIC], [P.GROUP_DYNAMIC, P.GROUP_STATIC]))
-                .setRestitution(0.7)
-                .setRestitutionCombineRule(P.CoefficientCombineRule.Max)
-            );
+            ball.get(Body).addCollider (this._ballCollider);
     
             tempVec3.set(0.0, 0.0, -1.0);
             tempVec3.rotateMat4(camMat);
             tempVec3.scale(0.05);
-
             ball.get(Body).applyImpulse(tempVec3);
     
-            ball.get(ModelRender).setAsset(this.context.gltfManager.fromUrl("gltf/src/ball.gltf"));
+            ball.get(ModelRender).configure(this._ballAsset, [ShaderNormals]);
         }
     }
 }
-
 
 let start = () => {
     //App
@@ -84,6 +80,8 @@ let start = () => {
     let gameContext = new GameContext(app.mainCanvas);
     let gameLayer = new GameLayer(gameContext);
     app.addLayer(gameLayer, 2);
+
+    ModelRender.defaultShaderMods = [ShaderNormals];
 
     const {gltfManager, PHYSICS} = gameContext;
 
@@ -93,23 +91,27 @@ let start = () => {
     let startAsset = gltfManager.fromUrl("gltf/scene/scene.gltf");
 
     cube.get(Transform).setLocalPosition(0, -1, -5);
-    cube.get(ModelRender).setAsset(startAsset);
-    cube.get(Body).configure(Body.STATIC)
-    cube.get(Body).setAsset(startAsset);
+    cube.get(ModelRender).configure(startAsset);
+    cube.get(Body).configure(Body.STATIC);
+    cube.get(Body).asset = startAsset;
 
     let animatedAsset = gltfManager.fromUrl("gltf/animated/testanim.gltf");
     let anim = gameContext.create(Transform, ModelRender);
-    anim.get(ModelRender).setAsset(animatedAsset);
+    anim.get(ModelRender).configure(animatedAsset);
+    anim.get(ModelRender).doLoaded(function() {
+        this.playAnimation(0);
+    });
+
     anim.get(Transform).setLocalPosition(0, 5.5, -8);
 
-    startAsset.getPromise().then(() => {
+    //startAsset.getPromise().then(() => {
         let player = gameContext.create(ShootingPlayer);
         player.name = "Player"
         //Renderer
         let renderer = new ForwardRenderer(gameContext);
-        renderer.mainCamera = player.get(ShootingPlayer).camera.get(Camera);
+        renderer.mainCamera = player.get(ShootingPlayer)._camera.get(Camera);
     
-    });
+    //});
 
     const initUI = function()
     {
@@ -133,7 +135,7 @@ if (window.RAPIER)
 {
     start()
 }
-else
+else                                                     
 {
     window.addEventListener("RAPIER", () => start());
 }

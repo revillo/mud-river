@@ -144,7 +144,7 @@ export class Body extends EntityComponent
         this._body.applyImpulse(impulse, true);
     }
 
-    setAsset(gltfAsset)
+    set asset(gltfAsset)
     {
         gltfAsset.safePromise(this.lifetime)
             .then(this._processGltfAsset.bind(this))

@@ -316,6 +316,11 @@ export class GPUContext
         {
             gl.uniformMatrix4fv(loc, false, data);
         } 
+
+        BinType.VEC4._bindFunc = (gl, loc, data) =>
+        {
+            gl.uniform4fv(loc, data);
+        }
     }
 
     createTexture2D(image, settings = DefaultTexture2DSettings)

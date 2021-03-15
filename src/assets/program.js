@@ -29,19 +29,17 @@ export class ProgramManager extends AssetManager
     fromMods(...mods)
     {
         mods = mods.flat();
-        let id = mods.map(Mod => Mod.name).join(',');
+        let id = mods.map(Mod => Mod.id).join(',');
         
         if (this.assets.has(id))
         {
             return this.assets.get(id);
         } 
-        else
-        {
-            const asset = new ProgramAsset(this);
-            asset.setProgram(new RasterProgram(this.gpu, DefaultAttributes, mods));
-            this.assets.set(id, asset);
-            return asset;
-        }
+        
+        const asset = new ProgramAsset(this);
+        asset.setProgram(new RasterProgram(this.gpu, DefaultAttributes, mods));
+        this.assets.set(id, asset);
+        return asset;
     }
 
     fromUrl()

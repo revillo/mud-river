@@ -158,6 +158,7 @@ export class ForwardRenderer
         mat4.multiply(this.globalBlock.viewProjection, this.projectionMatrix, this.viewMatrix);
 
         const thiz = this;
+        this.context.frameTimers.start("cull");
 
         this.cullWorld.step();
 
@@ -181,12 +182,18 @@ export class ForwardRenderer
                 });
             
         }
+        
+        this.context.frameTimers.stop("cull");
 
+
+        this.context.frameTimers.start("prim");
         this.firstPrim = true;
         for (var p = 0; p < i; p++)
         {
             this.renderPrim(this.primsToRender[p]);
         }        
+
+        this.context.frameTimers.stop("prim");
 
         
         //this.renderView((e) => thiz.renderPrim(e.get(PrimRender).prim));

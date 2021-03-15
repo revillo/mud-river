@@ -8,6 +8,7 @@ import { GLTFEnum } from "./../assets/gltf.js"
 import { BinType, BufferUsage } from "../buff/gpu-types.js";
 import { BufferManager } from "../buff/buffer.js";
 import { ShaderSkinning } from "../buff/shader-mods/skinning.js";
+import { ShaderNormals } from "../buff/shader-mods/normals.js";
 
 let tempVec3 = new Vector3();
 let temp2Vec3 = new Vector3();
@@ -25,6 +26,8 @@ export class BoneJoint extends EntityComponent
         this.invBind = invBind;
     }
 }*/
+
+
 
 export class Rig extends EntityComponent
 {
@@ -87,7 +90,7 @@ export class PrimRender extends EntityComponent
             return;
         }
 
-        var desc = P.RigidBodyDesc.newKinematic();
+        var desc = P.RigidBodyDesc.newStatic();
         this._cullBody = this.context.cullWorld.createRigidBody(desc);
 
         var colliderDesc = P.ColliderDesc.cuboid(prim.extents[0], prim.extents[1], prim.extents[2])
@@ -114,20 +117,36 @@ PrimRender.views = {
 PrimRender.update = function(dt, clock, context)
 {
     this.views.prim_moved(e => {
+
+        /**
+         * @type {Matrix4}
+         */
+
         const wm = e.parent.get(Transform).worldMatrix;
         let primC = e.get(PrimRender);
         mat4.copy(primC.prim.locals.model, wm);
-        wm.copyTranslation(tempVec3);
+        
+        wm.getRotation(tempVec3);
+        wm.decompose(tempVec3, tempQuat);
         primC._cullBody.setTranslation(tempVec3);
+        primC._cullBody.setRotation(tempQuat);
     });
 }
 
 
 export class ModelRender extends EntityComponent
 {
-    asset = null;
-    renderables = [];
-    lifetime = new Lifetime;
+    _asset = null;
+    _lifetime = new Lifetime;
+    _doLoadedList = new Array();
+    shaderMods = ModelRender.defaultShaderMods;
+
+    configure(modelAsset, shaderMods = ModelRender.defaultShaderMods)
+    {
+        this.shaderMods = shaderMods;
+        
+        this.asset = modelAsset;
+    }
 
     get animationCount()
     {
@@ -154,6 +173,18 @@ export class ModelRender extends EntityComponent
         this.animation = this.gltf.animations[index];
     }
 
+    doLoaded(fn)
+    {
+        if (this.gltf)
+        {
+            fn.call(this);
+        }
+        else
+        {
+            this._doLoadedList.push(fn);
+        }
+    }
+
     playAnimation(index)
     {
         this.entity.add("animating");
@@ -166,7 +197,7 @@ export class ModelRender extends EntityComponent
         this.entity.remove("animating");
     }
 
-    advanceAnimationTime(dt)
+    _advanceAnimationTime(dt)
     {
         this.setAnimationTime(this.animationTime + dt);
     }
@@ -234,12 +265,14 @@ export class ModelRender extends EntityComponent
     {
         const {gpu, bufferManager, programManager} = this.context;
         this.gpu = gpu;
-        const programAsset = programManager.fromMods(ShaderSimpleTexture);
-        const animProgramAsset = programManager.fromMods(ShaderSkinning, ShaderSimpleTexture);
+        
+        const programAsset = programManager.fromMods(...this.shaderMods);
+        const animProgramAsset = programManager.fromMods(ShaderSkinning, ...this.shaderMods);
+
         const program = programAsset.program;
         
-        this.asset = gltfAsset;
-        const gltf = this.asset.gltf;
+        this._asset = gltfAsset;
+        const gltf = this._asset.gltf;
         this.gltf = gltf;
         const prims = [];
         const thiz = this;
@@ -333,11 +366,12 @@ export class ModelRender extends EntityComponent
             this.setAnimationTime(0);
         }
 
+        this._doLoadedList.forEach(fn => fn.call(thiz));
     }
 
-    setAsset(gltfAsset)
+    set asset(gltfAsset)
     {
-        if (this.asset == gltfAsset)
+        if (this._asset == gltfAsset)
         {
             return;
         }
@@ -351,16 +385,16 @@ export class ModelRender extends EntityComponent
 
         this.modelRoot = this.entity.createChild();
 
-        this.asset = gltfAsset;
+        this._asset = gltfAsset;
 
-        gltfAsset.safePromise(this.lifetime)
+        gltfAsset.safePromise(this._lifetime)
             .then(this._processGltfAsset.bind(this))
             .catch(err => {err && console.error(err)});
     }
 
     destroy()
     {
-        this.lifetime.end();
+        this._lifetime.end();
     }
 }
 
@@ -372,6 +406,8 @@ ModelRender.views = {
 ModelRender.update = function(dt, clock)
 {
     this.views.animating(e => {
-        e.get(ModelRender).advanceAnimationTime(dt);
+        e.get(ModelRender)._advanceAnimationTime(dt);
     });
 }
+
+ModelRender.defaultShaderMods = [ShaderSimpleTexture]

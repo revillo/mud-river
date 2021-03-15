@@ -9,6 +9,8 @@ export class ShaderMod
         delete this.mod.requires;
         this.rankBias = (this.mod.rankBias || 0) / 1000;
         delete this.mod.rankBias;
+        this.id = this.mod.id;
+        delete this.mod.id;
     }
 
     apply(builder)

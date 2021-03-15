@@ -13,6 +13,7 @@ export class Form extends UIComponent
 
     clear()
     {
+        this.entity.eachChild(child => child.destroy());
         this.div.innerHTML = "";
     }
 

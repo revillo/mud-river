@@ -163,7 +163,7 @@ export class EntityPool
     create(...Components)
     {
         this.ensure(...Components);
-        let entity = this.discarded.pop() || new this.EntityType(this);
+        let entity = /*this.discarded.pop() ||*/ new this.EntityType(this);
         for (let C of Components)
         {
             this._add(entity, C);
@@ -185,7 +185,7 @@ export class EntityPool
             sets.get(C).delete(entity);
         }
         entity.components.clear();
-        this.discarded.push(entity);
+        //this.discarded.push(entity);
         this.size--;
     }
 
@@ -228,10 +228,14 @@ export class EntityPool
     with(...Components)
     {
         //todo exclude first type
+
+        let notFirst = new Array(Components.length - 1);
+
         return function(callback)
         {
             let smallest = this.size + 1;
             let firstSet = null;
+            let firstComp = null;
 
             for (let C of Components)
             {
@@ -242,12 +246,15 @@ export class EntityPool
                 {
                     smallest = set.size;
                     firstSet = set;
+                    firstComp = C;
                 }
             }
 
+            let notFirst = Components.filter(C => C != firstComp);
+
             for (let entity of firstSet)
             {
-                if (entity.has(...Components))
+                if (entity.has(...notFirst))
                 {
                     if(callback(entity) === false) return;
                 }

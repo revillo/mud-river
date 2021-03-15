@@ -12,7 +12,7 @@ export class Camera extends EntityComponent
     //viewMatrix = mat4.create();
     fovY = toRadian(60);
     near = 0.01;
-    far = 100;
+    far = 1000;
 
     //todo ensure transform
 

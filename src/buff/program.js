@@ -12,11 +12,6 @@ export class RasterProgram
         //console.log(vertBuilder.text);
         //console.log(fragBuilder.text);
 
-        console.log({
-            vert : vertBuilder.text,
-            frag : fragBuilder.text
-        });
-
         const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage);
         const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage);
     

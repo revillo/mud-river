@@ -4,6 +4,9 @@ import { ShaderUV0 } from "./uv0.js";
 
 const mod = {
 
+    id : "simple-tex",
+
+
     requires : [ShaderUV0],
 
     textures : [
