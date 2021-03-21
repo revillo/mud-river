@@ -14,6 +14,10 @@ export class Camera extends EntityComponent
     near = 0.01;
     far = 1000;
 
+    start()
+    {
+        this.entity.ensure(Transform);
+    }
     //todo ensure transform
 
     /**

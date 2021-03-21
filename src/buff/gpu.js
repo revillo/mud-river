@@ -8,6 +8,46 @@ const DefaultTexture2DSettings = {
     mipmap : true
 }
 
+
+function bindAttributes(gl, attributeLayout)
+{
+    for (let attributeName in attributeLayout)
+    {
+        /**
+         * @type {AttributeLayout}
+         */
+        const attribute = attributeLayout[attributeName];
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
+        let offset = attribute.offset;
+        const type = attribute.type;
+
+
+        for (let i = 0; i < type.attribLocs; i++)
+        {
+
+            const loc = attribute.location + i;
+
+            gl.enableVertexAttribArray(loc);
+            
+            if (type.attribType == PrimitiveType.INT || type == BinType.U8VEC4)
+            {
+                gl.vertexAttribIPointer(loc, type.attribCount, type.attribType, attribute.stride, offset);
+            }
+            else
+            {
+                gl.vertexAttribPointer(loc, type.attribCount, type.attribType, attribute.isNormalized, attribute.stride, offset);
+            }
+            if (attribute.instanced)
+            {
+                gl.vertexAttribDivisor(loc, attribute.instanced);
+            }
+            offset += type.sizeBytes / type.attribLocs;
+        }
+    }
+
+}
+
 /**
   * @class
   */
@@ -22,7 +62,7 @@ export class GPUContext
         //DEBUGGING
         window.gpu = this;
 
-        var canvasOpts = {antialias : true};
+        var canvasOpts = {antialias : true, premultipliedAlpha: false};
 
         this.gl = canvas.getContext("webgl2", canvasOpts);
 
@@ -67,8 +107,10 @@ export class GPUContext
             gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic'),
         }
 
-        gl.enable(gl.CULL_FACE);
-        gl.cullFace(gl.BACK);
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        //gl.enable(gl.CULL_FACE);
+        //gl.cullFace(gl.BACK);
     }
 
     /**
@@ -225,45 +267,17 @@ export class GPUContext
      * @param {IndexLayout} indexLayout 
      * @return {GPUGeometryBinding}
      */
-    createGeometryBinding(attributeLayout, indexLayout)
+    createGeometryBinding(attributeLayout, indexLayout, instanceLayout)
     {
         const gl = this.gl;
         const vao = gl.createVertexArray();
         
         gl.bindVertexArray(vao);
+        
+        bindAttributes(gl, attributeLayout);
 
-        for (let attributeName in attributeLayout)
-        {
-            /**
-             * @type {AttributeLayout}
-             */
-            const attribute = attributeLayout[attributeName];
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, attribute.buffer.glBuffer);
-            let offset = attribute.offset;
-            const type = attribute.type;
-
-            for (let i = 0; i < type.attribLocs; i++)
-            {
-                const loc = attribute.location + i;
-  
-                gl.enableVertexAttribArray(loc);
-                
-                if (type.attribType == PrimitiveType.INT || type == BinType.U8VEC4)
-                {
-                    gl.vertexAttribIPointer(loc, type.attribCount, type.attribType, attribute.stride, offset);
-                }
-                else
-                {
-                    gl.vertexAttribPointer(loc, type.attribCount, type.attribType, attribute.isNormalized, attribute.stride, offset);
-                }
-                if (attribute.instanced)
-                {
-                    gl.vertexAttribDivisor(loc, attribute.instanced);
-                }
-                offset += type.sizeBytes / type.attribLocs;
-            }
-        }
+        if (instanceLayout)
+            bindAttributes(gl, instanceLayout);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -406,6 +420,13 @@ export class GPUContext
         gl.uniform1i(loc, channel);     
     }
 
+    unbindTexture(texture, channel)
+    {
+        const gl = this.gl;
+        gl.activeTexture(gl.TEXTURE0 + channel);
+        gl.bindTexture(texture.target, null);
+    }
+
     /**
      * 
      * @param {GPUGeometryBinding} meshBinding 
@@ -430,6 +451,7 @@ export class GPUContext
         }
         else
         {
+            //todo
             if (instanceCount)
             {
                 gl.drawArraysInstanced(geometryBinding.mode, geometryBinding.startIndex, geometryBinding.indexCount, instanceCount);

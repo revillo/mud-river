@@ -9,23 +9,16 @@ import { BinType, BufferUsage } from "../buff/gpu-types.js";
 import { BufferManager } from "../buff/buffer.js";
 import { ShaderSkinning } from "../buff/shader-mods/skinning.js";
 import { ShaderNormals } from "../buff/shader-mods/normals.js";
+import { ShaderInstances } from "../buff/shader-mods/instances.js";
+import { AttributeLayoutGenerator, DefaultAttributes } from "../buff/attribute.js";
+import { Entity } from "../ecso/ecso.js";
+import { Collision } from "../game/collision.js";
 
 let tempVec3 = new Vector3();
 let temp2Vec3 = new Vector3();
 let tempQuat = new Quaternion();
 let temp2Quat = new Quaternion();
 let tempMat4 = new Matrix4();
-
-/*
-export class BoneJoint extends EntityComponent
-{
-    invBind = null;
-
-    configure(invBind, bindMatrices, index)
-    {
-        this.invBind = invBind;
-    }
-}*/
 
 
 
@@ -71,47 +64,86 @@ export class Rig extends EntityComponent
     }
 }
 
-export class PrimRender extends EntityComponent
+export class CullRegion extends EntityComponent
 {
+    primRenders = [];
 
-    configure(prim)
+    addPrim(primRender)
     {
-        this.prim = prim;
-        this.addToCullWorld();
-    }
-
-    addToCullWorld()
-    {
-        let P = this.context.PHYSICS;
-        const prim = this.prim;
-
-        //todo compute
-        if (!this.prim.extents){
-            return;
-        }
-
-        var desc = P.RigidBodyDesc.newStatic();
-        this._cullBody = this.context.cullWorld.createRigidBody(desc);
-
-        var colliderDesc = P.ColliderDesc.cuboid(prim.extents[0], prim.extents[1], prim.extents[2])
-            .setCollisionGroups(P.getCollisionGroups([P.GROUP_CULL], [P.GROUP_PLAYER]))
-            .setTranslation(prim.center.x, prim.center.y, prim.center.z);
-        
-        this._collider = this.context.cullWorld.createCollider(colliderDesc, this._cullBody.handle);
-
-        this.context.cullMap.set(this._collider.handle, this);
+        this.primRenders.push(primRender)
     }
 
     destroy()
     {
         this.context.cullMap.delete(this._collider.handle);
-        this.context.gpu.deleteGeometryBinding(this.prim.binding);
         this.context.cullWorld.removeRigidBody(this._cullBody);
+    }
+
+    addToCullWorld(center, radius)
+    {
+        let P = this.context.PHYSICS;
+
+        var desc = P.RigidBodyDesc.newStatic();
+        this._cullBody = this.context.cullWorld.createRigidBody(desc);
+        this._collider = this.context.cullWorld.createCollider(this.colliderDesc, this._cullBody.handle);
+        this.context.cullMap.set(this._collider.handle, this);
+    }
+}
+
+export class CullSphere extends CullRegion
+{
+    configure(center, radius)
+    {
+        let P = this.context.PHYSICS;
+
+        this.colliderDesc = P.ColliderDesc.ball(radius)
+            .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
+            .setTranslation(center.x, center.y, center.z);
+
+        this.addToCullWorld();
+    }
+}
+
+export class CullBox extends CullRegion
+{
+    configure(center, extents)
+    {
+        let P = this.context.PHYSICS;
+        
+        this.colliderDesc = P.ColliderDesc.cuboid(extents.x, extents.y, extents.z)
+            .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
+            .setTranslation(center.x, center.y, center.z);
+
+        this.addToCullWorld();
+    }
+}
+
+export class PrimRender extends EntityComponent
+{
+
+    configure(prim, autoCull)
+    {
+        this.prim = prim;
+        this.autoCull = autoCull;
+
+        if (autoCull)
+        {
+            this.entity.ensure(CullBox);
+            this.get(CullBox).configure(this.prim.center, this.prim.extents);
+            this.get(CullBox).addPrim(this);
+        }    
+    }
+
+    destroy()
+    {
+        this.context.gpu.deleteGeometryBinding(this.prim.binding);
     }
 }
 
 PrimRender.views = {
-    prim_moved : [PrimRender, "moved"]
+    prim_moved : [PrimRender, "moved"],
+    cull_box_moved : [CullBox, "moved"],
+    cull_sphere_moved : [CullSphere, "moved"]
 }
 
 PrimRender.update = function(dt, clock, context)
@@ -121,15 +153,25 @@ PrimRender.update = function(dt, clock, context)
         /**
          * @type {Matrix4}
          */
-
-        const wm = e.parent.get(Transform).worldMatrix;
+        const wm =  Transform.getWorldMatrix(e);
         let primC = e.get(PrimRender);
         mat4.copy(primC.prim.locals.model, wm);
-        
-        wm.getRotation(tempVec3);
+    });
+
+    this.views.cull_box_moved(e => {
+
+        const wm = Transform.getWorldMatrix(e);
+        let cullBody = e.get(CullBox)._cullBody;
         wm.decompose(tempVec3, tempQuat);
-        primC._cullBody.setTranslation(tempVec3);
-        primC._cullBody.setRotation(tempQuat);
+        cullBody.setTranslation(tempVec3);
+        cullBody.setRotation(tempQuat);
+    });
+
+    this.views.cull_sphere_moved(e => {
+        const wm = Transform.getWorldMatrix(e);
+        let cullBody = e.get(CullSphere)._cullBody;
+        wm.getTranslation(tempVec3);
+        cullBody.setTranslation(tempVec3);
     });
 }
 
@@ -139,13 +181,62 @@ export class ModelRender extends EntityComponent
     _asset = null;
     _lifetime = new Lifetime;
     _doLoadedList = new Array();
-    shaderMods = ModelRender.defaultShaderMods;
-
-    configure(modelAsset, shaderMods = ModelRender.defaultShaderMods)
+    _instanceBuffer = null;
+    _instanceHoles = [];
+    
+    config = 
     {
-        this.shaderMods = shaderMods;
-        
+        shaderMods : ModelRender.defaultShaderMods,
+        isInstanced : false,
+        isStatic : true,
+        instanceCount : 0,
+        maxInstances : 0,
+        autoCull : true,
+        cullRegion: null
+    }
+
+    configure(modelAsset, config)
+    {
+        Object.assign(this.config, config);
+
+        if (this.config.isInstanced)
+        {
+            this.programAsset = this.context.programManager.fromMods(ShaderInstances, ...this.config.shaderMods);
+            //todo only if animated
+            this.animProgramAsset = this.context.programManager.fromMods(ShaderInstances, ShaderSkinning, ...this.config.shaderMods);
+
+            this._instanceBuffer = this.context.bufferManager.allocInstanceBlockBuffer(
+                this.config.maxInstances || this.config.instanceCount, 
+                this.programAsset.program.instanceAttributes
+                , this.config.isStatic ? BufferUsage.STATIC : BufferUsage.DYNAMIC);
+                
+        }
+        else
+        {
+            this.programAsset = this.context.programManager.fromMods(...this.config.shaderMods);
+            
+            //todo only if animated
+            this.animProgramAsset = this.context.programManager.fromMods(ShaderSkinning, ...this.config.shaderMods);
+
+        }
+
+
         this.asset = modelAsset;
+    }
+
+    getInstanceBlock(index)
+    {
+        return this._instanceBuffer.getBlock(index);
+    }
+
+    recycleInstance(index)
+    {
+        this._instanceHoles.push(index);
+    }
+
+    syncInstances(startIndex, count)
+    {
+        this._instanceBuffer.uploadBlocks(startIndex, count);
     }
 
     get animationCount()
@@ -266,10 +357,7 @@ export class ModelRender extends EntityComponent
         const {gpu, bufferManager, programManager} = this.context;
         this.gpu = gpu;
         
-        const programAsset = programManager.fromMods(...this.shaderMods);
-        const animProgramAsset = programManager.fromMods(ShaderSkinning, ...this.shaderMods);
-
-        const program = programAsset.program;
+        const program = this.programAsset.program;
         
         this._asset = gltfAsset;
         const gltf = this._asset.gltf;
@@ -287,20 +375,26 @@ export class ModelRender extends EntityComponent
          */
         this.rigs = [];
 
-        gltf.meshes.forEach(mesh => {
-            mesh.primitives.forEach(prim => {
+        let instLayout = null;
 
-                const localBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
+        if (thiz.config.isInstanced)
+        {
+            //todo
+            let instGen = new AttributeLayoutGenerator(null, [DefaultAttributes.INSTANCE_MATRIX], false, false);
+            instLayout = instGen.generateAttributeLayout(null, thiz._instanceBuffer.getInstanceBufferView())
+        }
+
+        this.localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", gltf.primitiveCount, program.uniformBlocks.Locals);
+
+        gltf.meshes.forEach(mesh => {
+            mesh.primitives.forEach(prim => {    
 
                 prims[prim.id] ={
-                    binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout),
-                    numInstances: 0,
-                    blockindex : 0,
+                    binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout, instLayout),
+                    instanceConfig : thiz.config,
                     extents : prim.extents,
                     center: prim.center,
-                    localBuffer : localBuffer,
-                    locals : localBuffer.getBlock(0),
-                    //todo cache programs on materials?
+                    locals : thiz.localsBuffer.getBlock(prim.id),
                     program : program,
                     material : prim.material
                 };
@@ -331,10 +425,19 @@ export class ModelRender extends EntityComponent
                 node.mesh.primitives.forEach(prim =>{
                     if (node.skin)
                     {
-                        prims[prim.id].program = animProgramAsset.program;
+                        prims[prim.id].program = thiz.animProgramAsset.program;
                     }
                     let primEntity = entity.createChild(PrimRender, "moved");
-                    primEntity.get(PrimRender).configure(prims[prim.id]);
+
+                    if (thiz.config.cullRegion)
+                    {
+                        primEntity.get(PrimRender).configure(prims[prim.id], false);
+                        thiz.config.cullRegion.addPrim(primEntity.get(PrimRender));
+                    }
+                    else
+                    {
+                        primEntity.get(PrimRender).configure(prims[prim.id], thiz.config.autoCull);
+                    }
                 });
             }
 

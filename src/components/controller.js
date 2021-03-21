@@ -1,4 +1,6 @@
+import { Collision } from "../game/collision.js";
 import { EntityComponent } from "../game/game-context.js";
+import { toRadian } from "../glm/common.js";
 import { vec2, vec3, quat, mat4 } from "../glm/index.js";
 import { Quaternion, Vector3 } from "../math/index.js";
 import { Body } from "./body.js";
@@ -9,6 +11,9 @@ export class Controller extends EntityComponent
 {
     isPressed(action)
     {
+        if (this.context.activeController != this)
+            return false;
+
         return this.inputManager.isPressed(action);
     }
 
@@ -17,12 +22,20 @@ export class Controller extends EntityComponent
         return this.context.inputManager;
     }
 
+    activate()
+    {
+        if (this.context.activeController && this.context.activeController != this)
+        {
+            this.context.activeController.unbindInputs();
+        }
+
+        this.context.activeController = this;
+    }
     
     bindInput(action, handler)
     {
         this._inputListeners = this._inputListeners || [];
         handler = handler.bind(this);
-
         this._inputListeners.push({action, handler});
         this.inputManager.addListener(action, handler);
     }
@@ -37,8 +50,12 @@ export class Controller extends EntityComponent
         this._inputListeners.length = 0;
     }
 
-    /*
+    destroy()
+    {
+        this.unbindInputs();
+    }
 
+    /*
     Component.prototype.addInputListener = function(action, handler)
     {
         inputManager.addListener(action, handler);
@@ -52,14 +69,46 @@ export class Controller extends EntityComponent
 
 export class FreeController extends Controller
 {
-    _cameraAngles = vec2.create();
+    _lookAngles = vec2.create();
     _camera = null;
-    _movement = vec3.create();
+    _movement = Vector3.new();
 
     start()
     {
-        this._camera = this.get(Camera);
+        this.entity.ensure(Transform);
+        this._camera = this.entity.createChild(Camera);
+        this.activate();
     }
+
+    activate()
+    {
+        super.activate();
+
+        this.bindInput("Look", this.look);
+        this.bindInput("Aim", this.aim);
+    }
+
+  
+    aim(axis)
+    {
+        if (this.isPressed('Look'))
+        {
+            this._lookAngles[0] -= axis.dx * 100;
+            this._lookAngles[1] = Math.clamp( this._lookAngles[1] - axis.dy * 100, -89, 89);
+    
+            quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
+            this.get(Transform).setLocalRotation(tempQuat);
+
+            quat.fromEuler(tempQuat, this._lookAngles[1], 0, 0);
+            this._camera.get(Transform).setLocalRotation(tempQuat);
+        }
+    }
+
+    look(button)
+    {   
+        this.inputManager.setPointerLock(button.isPressed);
+    }
+
 
     update(dt, clock)
     {
@@ -85,15 +134,23 @@ export class FreeController extends Controller
             this._movement[0] += 1;
         }
 
-        vec3.setLength(this._movement, dt);
-        this.get(Transform).preTranslate(this._movement);
+        let scale = 6;
+
+        if (this.isPressed('Sprint'))
+        {
+            scale = 60;
+        }
+
+        vec3.setLength(this._movement, scale * dt);
+        this._movement.rotateMat4(this._camera.get(Transform).worldMatrix);
+
+        this.get(Transform).worldTranslate(this._movement);       
     }
 }
 
-
 const tempQuat = Quaternion.new();
 const tempVec3 = Vector3.new();
-
+const tempUp = Vector3.new();
 
 export class CharacterController extends Controller
 {
@@ -105,6 +162,8 @@ export class CharacterController extends Controller
     glideForce = 5;
     cushionForce = 5;
     groundMaxDistance = 0.1;
+    glideDamping = 0.2;
+    runDamping = 10;
 
     _onGround = false;
     _groundDistance = 0;
@@ -113,6 +172,7 @@ export class CharacterController extends Controller
     _lookAngles = vec2.create();
     _camera = null;
     _sweepFilter = null;
+    gravityDirection = new Vector3(0, -1, 0);
 
     start()
     {
@@ -122,7 +182,7 @@ export class CharacterController extends Controller
         this._camera.get(Transform).setLocalPosition(0, this.height, 0);
 
         const P = this.context.PHYSICS;
-        this._sweepFilter = P.getCollisionGroups([P.GROUP_PLAYER], [P.GROUP_STATIC]);
+        this._sweepFilter = Collision.getCollisionGroups([Collision.PLAYER], [Collision.STATIC]);
 
         let capsuleColliderDesc = P.ColliderDesc.capsule(this.halfHeight, 0.2)
             .setTranslation(0, this.halfHeight, 0.0)
@@ -135,11 +195,17 @@ export class CharacterController extends Controller
         this._body.addCollider(capsuleColliderDesc);
         this._movement = Vector3.new();
     
+        
+        this.activate();
+    }
+
+    activate()
+    {
+        super.activate();
+
         this.bindInput("Jump", this.jump);
         this.bindInput("Look", this.look);
         this.bindInput("Aim", this.aim);
-
-        window.player = this;
     }
 
     get camera()
@@ -154,9 +220,10 @@ export class CharacterController extends Controller
             this._lookAngles[0] -= axis.dx * 100;
             this._lookAngles[1] = Math.clamp( this._lookAngles[1] - axis.dy * 100, -89, 89);
 
-    
-            quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
-            this.get(Transform).setLocalRotation(tempQuat);
+            this.get(Transform).worldRotateUp(toRadian(-axis.dx * 100));
+
+            //quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
+            //this.get(Transform).setLocalRotation(tempQuat);
 
             quat.fromEuler(tempQuat, this._lookAngles[1], 0, 0);
             this._camera.get(Transform).setLocalRotation(tempQuat);
@@ -173,7 +240,8 @@ export class CharacterController extends Controller
     { 
         if (button.isPressed)
         {
-            this._movement.set(0, this.jumpImpulse, 0);
+            this._movement.copy(this.gravityDirection);
+            this._movement.setLength(-this.jumpImpulse);
             this._body.applyImpulse(this._movement);
         }  
     }
@@ -183,28 +251,33 @@ export class CharacterController extends Controller
         const P = this.context.PHYSICS;
 
         this.get(Transform).worldMatrix.decompose(tempVec3, tempQuat);
+        tempUp.copy(this.gravityDirection);
+        tempUp.scale(-1 * (this.halfHeight + 0.01));
     
-        tempVec3.y += this.halfHeight + 0.01;
+        tempVec3.add(tempUp);
+        //tempVec3.y += this.halfHeight + 0.01;
 
         let maxDist = this.groundMaxDistance;
-        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, tempVec3, tempQuat, Vector3.DOWN, 
+        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, 
+            tempVec3, tempQuat, this.gravityDirection, 
             this._sweepShape, maxDist, this._sweepFilter);
         
         if (collisionResult)
         {
-            this._body.setLinearDamping(10);
+            this._body.linearDamping = this.runDamping;
             this._onGround = true;
             this._groundDistance = collisionResult.toi;
    
             let cushionY = Math.max(0.0, this.groundMaxDistance - this._groundDistance) / this.groundMaxDistance;
             cushionY = Math.pow(cushionY, 0.5) * this.cushionForce; 
-            this._movement.set(0, cushionY, 0);
+            
+            tempUp.setLength(cushionY);
 
-            this._body.applyForce(this._movement);
+            this._body.applyForce(tempUp);
         }
         else
         {
-            this._body.setLinearDamping(0.2);
+            this._body.linearDamping = this.glideDamping;
             this._onGround = false;
         }
 
@@ -240,10 +313,5 @@ export class CharacterController extends Controller
         this._movement.rotateMat4(this.get(Transform).worldMatrix);
         vec3.setLength(this._movement, this._onGround ? this.runForce : this.glideForce);
         this._body.applyForce(this._movement);
-    }
-
-    destroy()
-    {
-        this.unbindInputs();
     }
 }

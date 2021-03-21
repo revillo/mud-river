@@ -1,8 +1,12 @@
 import { EntityComponent } from "../game/game-context.js";
 import { quat, vec3, mat4 } from "../glm/index.js";
-import { Matrix4 } from "../math/index.js";
+import { temp2 } from "../glm/mat4.js";
+import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
 
-const tempMat4 = Matrix4.new();
+let tempVec3 = Vector3.new();
+let temp2Vec3 = Vector3.new();
+let temp3Vec3 = Vector3.new();
+let tempQuat = Quaternion.new();
 
 /**
  * @class
@@ -52,6 +56,40 @@ export class Transform extends EntityComponent
         this._markDirty();
     }
 
+    worldTranslate(v)
+    {
+        this.worldMatrix.getTranslation(tempVec3);
+        tempVec3.add(v);
+        this.setWorldTranslation(tempVec3);
+    }
+
+    worldRotateUp(rads)
+    {
+        this.worldMatrix.getUp(tempVec3);
+        quat.setAxisAngle(tempQuat, tempVec3, rads);
+        //quat.normalize(tempQuat);
+
+        this._worldMatrix.getForward(temp2Vec3);
+        this._worldMatrix.getRight(temp3Vec3);
+        
+        vec3.transformQuat(temp2Vec3, temp2Vec3, tempQuat);
+        vec3.transformQuat(temp3Vec3, temp3Vec3, tempQuat);
+
+        this._worldMatrix.setRightUpForward(temp3Vec3, tempVec3, temp2Vec3);
+        this._fixLocal();
+    }
+
+    setLocalUpForward(up, forward)
+    {
+        vec3.cross(tempVec3, forward, up);
+        tempVec3.normalize();
+        vec3.cross(temp2Vec3, up, tempVec3);
+
+        this._localMatrix.setRightUpForward(tempVec3, up, temp2Vec3);
+
+        this._markDirty();
+    }
+
     setLocalRotation(q)
     {
         this._localMatrix.setRotation(q);
@@ -62,6 +100,12 @@ export class Transform extends EntityComponent
     {
         this._localMatrix.copy(m);
         this._markDirty();
+    }
+
+    setWorldMatrix(m)
+    {
+        this._worldMatrix.copy(m);
+        this._fixLocal();
     }
 
     setLocalTranslationRotation(v, q)
@@ -108,6 +152,16 @@ export class Transform extends EntityComponent
         this._fixLocal();
     }
 
+    getWorldTranslation(v)
+    {
+        this.worldMatrix.getTranslation(v);
+    }
+
+    getLocalTranslation(v)
+    {
+        this._localMatrix.getTranslation(v);
+    }
+
     setWorldTranslationRotation(v, q)
     {
         this.worldMatrix.setTranslationRotation(v, q);
@@ -147,3 +201,13 @@ export class Transform extends EntityComponent
 
 
 Transform.icon = "Transform"
+
+Transform.getWorldMatrix = function(entity)
+{
+    if (entity.has(Transform))
+    {
+        return entity.get(Transform).worldMatrix;
+    }
+
+    return Transform.getWorldMatrix(entity.parent);
+}

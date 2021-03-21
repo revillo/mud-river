@@ -1229,13 +1229,13 @@ export function getRotation(out, mat) {
 /**
  * Decomposes a transformation matrix into its rotation, translation
  * and scale components. Returns only the rotation component
- * @param  {quat} out_r Quaternion to receive the rotation component
  * @param  {vec3} out_t Vector to receive the translation vector
+ * @param  {quat} out_r Quaternion to receive the rotation component
  * @param  {vec3} out_s Vector to receive the scaling factor
  * @param  {ReadonlyMat4} mat Matrix to be decomposed (input)
  * @returns {quat} out_r
  */
-export function decompose(out_r, out_t, out_s, mat) {
+export function decompose(out_t, out_r, out_s, mat) {
   out_t[0] = mat[12];
   out_t[1] = mat[13];
   out_t[2] = mat[14];

@@ -27,10 +27,12 @@ ComputeLocations();
 
 class AttributeLayoutGenerator 
 {
-    constructor(vertexAttribtues, instanceAttributes)
+    constructor(vertexAttributes, instanceAttributes, vertsInterleaved = false, instancesInterleaved = true)
     {
         this.instanceAttributes = instanceAttributes;
-        this.vertexAttribtues = vertexAttribtues;
+        this.vertexAttributes = vertexAttributes;
+        this.vertsInterleaved = vertsInterleaved;
+        this.instancesInterleaved = instancesInterleaved;
 
         /**
          * @type {Map<string, AttributeLayout>}
@@ -65,7 +67,7 @@ class AttributeLayoutGenerator
                 buffer : buffer,
                 location : attribute.location,
                 offset: offset,
-                stride: stride,
+                stride: stride == 0 ? type.sizeBytes : stride,
                 type: type,
                 isNormalized : false,
                 instanced : instances
@@ -81,11 +83,16 @@ class AttributeLayoutGenerator
      */
     generateAttributeLayout(vertexBufferView, instanceBufferView)
     {
-        this._generateAttributeHelper(this.layout, this.vertexAttribtues, vertexBufferView.buffer, vertexBufferView.offset, 0);
-        if (instanceBufferView)
+        if (this.vertexAttributes)
         {
-            this._generateAttributeHelper(this.layout, this.instanceAttributes, instanceBufferView.buffer, instanceBufferView.offset, 1);
+            this._generateAttributeHelper(this.layout, this.vertexAttributes, vertexBufferView.buffer, vertexBufferView.offset, 0, this.vertsInterleaved ? undefined : 0);
         }
+
+        if (this.instanceAttributes)
+        {
+            this._generateAttributeHelper(this.layout, this.instanceAttributes, instanceBufferView.buffer, instanceBufferView.offset, 1, this.instancesInterleaved ? undefined : 0);
+        }
+
         return this.layout;
     }
 

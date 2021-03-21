@@ -75,7 +75,7 @@ class BlockBuffer
         if (this.bufferViewGPU)
         {
             let arrayBuffer = new Uint8Array(this.cpuBuffer, start * this.blockSize, count * this.blockSize);
-            this.gpu.uploadArrayBuffer(this.bufferViewGPU.buffer, arrayBuffer, this.bufferViewGPU.offset);
+            this.gpu.uploadArrayBuffer(this.bufferViewGPU.buffer, arrayBuffer, this.bufferViewGPU.offset + start * this.blockSize);
         }
     }
 

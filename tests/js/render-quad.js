@@ -30,7 +30,7 @@ class RenderQuad extends RenderDemo
             ]));
     
             //Create geometry binding
-            var attrGen = new AttributeLayoutGenerator([DefaultAttributes.POSITION, DefaultAttributes.UV0]); 
+            var attrGen = new AttributeLayoutGenerator([DefaultAttributes.POSITION, DefaultAttributes.UV0], null, true); 
             const triVertexLayout = attrGen.generateAttributeLayout(vertBufferView);
             const triBinding = gpu.createGeometryBinding(triVertexLayout, indexBufferView);
     

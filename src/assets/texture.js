@@ -9,8 +9,6 @@ export class TextureAsset extends Asset
 
     loadFromUrl(url)
     {
-        if (this.isLoaded) return;
-
         var thiz = this;
 
         this.image = new Image;
@@ -22,7 +20,7 @@ export class TextureAsset extends Asset
                 resolve(thiz);
             }
 
-            thiz.image.onError = (e) => {
+            thiz.image.onerror = (e) => {
                 thiz.error = true;
                 reject(e);
             }
@@ -43,6 +41,12 @@ export class TextureAsset extends Asset
     {
         if (this.isOnGPU)
             this.gpu.bindTexture(program.gpuProgram, name, this.texture, channel);
+    }
+
+    unbind(channel)
+    {
+        if (this.isOnGPU)
+            this.gpu.unbindTexture(this.texture, channel);
     }
 
     getLoadedImage()

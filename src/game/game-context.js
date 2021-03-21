@@ -1,3 +1,4 @@
+import { AudioManager } from "../assets/audio.js";
 import { GLTFManager } from "../assets/gltf.js";
 import { ProgramManager } from "../assets/program.js";
 import { TextureManager } from "../assets/texture.js";
@@ -153,7 +154,7 @@ export class EventManager
  */
 export class GameContext extends EntityPool
 {
-    constructor(canvas)
+    constructor(canvas, gravity)
     {
         super(GameEntity);
         this.root = this.create();
@@ -169,12 +170,13 @@ export class GameContext extends EntityPool
             this.textureManager = new TextureManager(this.bufferManager);
             this.gltfManager = new GLTFManager(this.bufferManager, this.textureManager);
             this.programManager = new ProgramManager(this.gpu);
+            this.audioManager = new AudioManager();
         }
         
         this.updaters = new Map();
         this.systems = [];
 
-        this.initPhysics();
+        this.initPhysics(gravity);
 
         
         this.views = {
@@ -186,37 +188,24 @@ export class GameContext extends EntityPool
         this.frameTimers = new FrameMetrics();
     }
 
-    initPhysics()
+    initPhysics(gravity)
     {
         const PHYSICS = window.RAPIER;
         this.PHYSICS = PHYSICS;
-
-        PHYSICS.GROUP_STATIC = 0;
-        PHYSICS.GROUP_DYNAMIC = 1;
-        PHYSICS.GROUP_PLAYER = 2;
-        PHYSICS.GROUP_CULL = 3;
-
-        PHYSICS.getCollisionGroups = function(myGroups, interactGroups)
-        {
-            var result = 0;
-            for (let g of myGroups)
-            {
-                result += (1 << g);
-            }
-            result = result << 16;
-            
-            for (let f of interactGroups)
-            {
-                result += (1 << f);
-            }
-            return result;
-        }
-
-        let gravity = new PHYSICS.Vector3(0.0, -9.81, 0.0);
+        gravity = gravity || new PHYSICS.Vector3(0.0, -9.81, 0.0);
         this.physicsWorld = new PHYSICS.World(gravity);
         this.cullWorld = new PHYSICS.World(gravity);     
         this.cullMap = new Map();
-        this.dynamicMap = new Map();
+        
+        /**
+         * @type {Map<number, Body>}
+         */
+         this.dynamicBodyMap = new Map();
+        
+         /**
+         * @type {Map<number, GameEntity}
+         */
+        this.colliderMap = new Map();
     }
 
     addNewType(Component)
@@ -264,6 +253,8 @@ export class GameContext extends EntityPool
 
     update(dt, clock)
     {
+        this.frameTimers.stop("nextframe");
+        
         this.frameTimers.start("frame");
 
         this.frameTimers.start("sys")
@@ -288,6 +279,9 @@ export class GameContext extends EntityPool
 
         this.clear("moved");
         this.frameTimers.stop("frame");
+
+        
+        this.frameTimers.start("nextframe");
     }
 
     _add(entity, C)

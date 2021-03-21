@@ -74,6 +74,8 @@ export class FrameMetrics
     stop(name)
     {
         const metric = this.metrics.get(name);
+        if (!metric) return;
+        
         //metric.count += 1;
         //metric.totalTime += metric.timer.tickMS();
 

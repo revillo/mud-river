@@ -15,10 +15,13 @@ export class Lifetime
     }
 }
 
+let assetUUID = 0;
+
 export class Asset
 {
     constructor(manager)
     {
+        this.uuid = assetUUID++;
         this.manager = manager;
         this.isLoaded = false;
         this.error = false;
@@ -85,6 +88,12 @@ export class AssetManager //Abstract
     constructor()
     {
         this.assets = new Map();
+        this.assetsDir = "../assets/";
+    }
+
+    setAssetDir(dir)
+    {
+        this.assetsDir = dir;
     }
 
     /**
@@ -104,6 +113,11 @@ export class AssetManager //Abstract
         asset.loadFromUrl(url);
 
         return asset;
+    }
+
+    fromAssets(name)
+    {
+        return this.fromUrl(this.assetsDir + name);
     }
     
     loadBatch(batch)

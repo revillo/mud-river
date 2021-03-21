@@ -45,6 +45,12 @@ export class GameEditor extends UIComponent
         this.sideBar.style.background = UIColors.PANEL_BG;
     }
 
+    configure(gameContext, imgPath)
+    {
+        SceneGraph.imgPath = imgPath;
+        this.gameContext = gameContext;
+    }
+
     /**
      * 
      * @param {GameContext} gameContext 

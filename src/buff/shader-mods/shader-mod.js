@@ -1,5 +1,7 @@
 import { merge } from "../../util/merge.js";
 
+let idTracker = 0;
+
 export class ShaderMod
 {
     constructor (mod)
@@ -9,7 +11,7 @@ export class ShaderMod
         delete this.mod.requires;
         this.rankBias = (this.mod.rankBias || 0) / 1000;
         delete this.mod.rankBias;
-        this.id = this.mod.id;
+        this.id = this.mod.id || (++idTracker);
         delete this.mod.id;
     }
 

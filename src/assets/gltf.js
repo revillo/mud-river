@@ -59,6 +59,7 @@ function safeEach(array, handler)
     }
 }
 
+/*
 const GLTFMaterialBindTextures = function(gpu, program)
 {
     var i = 0;
@@ -68,7 +69,30 @@ const GLTFMaterialBindTextures = function(gpu, program)
         i += 1;
     }
 }
+*/
 
+export class GLTFMaterial
+{
+    bindTextures(program)
+    {
+        var i = 0;
+        for (let texName in this.textures)
+        {
+            this.textures[texName].bind(program, texName, i);
+            i += 1;
+        }
+    }
+
+    unbindTextures()
+    {
+        var i = 0;
+        for (let texName in this.textures)
+        {
+            this.textures[texName].unbind(i);
+            i += 1;
+        }
+    }
+}
 
 export class GLTFAsset extends Asset
 {
@@ -223,29 +247,35 @@ export class GLTFAsset extends Asset
             return gltf.textures[texture.index].asset;
         }
 
-        safeEach(gltf.materials, material => {
-            material.textures = {};
-            material.factors = {};
+        safeEach(gltf.materials, (material, i) => {
 
-            material.bindTextures = GLTFMaterialBindTextures;
+            let newMaterial = new GLTFMaterial();
+
+            newMaterial.textures = {};
+            newMaterial.factors = {};
+
+
+            //material.bindTextures = GLTFMaterialBindTextures;
             const pbr = material.pbrMetallicRoughness;
             if(pbr)
             {
-                material.textures.t_baseColor = resolveTextureAsset(pbr.baseColorTexture);
-                material.textures.t_metallicRoughness = resolveTextureAsset(pbr.metallicRoughnessTexture);
-                material.factors.u_baseColor = new Float32Array(pbr.baseColorFactor || [1,1,1,1]);
-                material.factors.u_metallic = pbr.metallicFactor || 0;
-                material.factors.u_roughness = pbr.roughnessFactor || 1;
+                newMaterial.textures.t_baseColor = resolveTextureAsset(pbr.baseColorTexture);
+                newMaterial.textures.t_metallicRoughness = resolveTextureAsset(pbr.metallicRoughnessTexture);
+                newMaterial.factors.u_baseColor = new Float32Array(pbr.baseColorFactor || [1,1,1,1]);
+                newMaterial.factors.u_metallic = pbr.metallicFactor || 0;
+                newMaterial.factors.u_roughness = pbr.roughnessFactor || 1;
             }
 
-            material.textures.t_normal = resolveTextureAsset(material.normalTexture);
-            material.textures.t_occlusion = resolveTextureAsset(material.occlusionTexture);
-            material.textures.t_emissive = resolveTextureAsset(material.emissiveTexture);
+            newMaterial.textures.t_normal = resolveTextureAsset(material.normalTexture);
+            newMaterial.textures.t_occlusion = resolveTextureAsset(material.occlusionTexture);
+            newMaterial.textures.t_emissive = resolveTextureAsset(material.emissiveTexture);
 
-            material.factors.u_emissive = new Float32Array(material.emissiveFactor || [0,0,0]);
+            newMaterial.factors.u_emissive = new Float32Array(material.emissiveFactor || [0,0,0]);
 
-            prune(material.textures);
-            prune(material.factors);
+            prune(newMaterial.textures);
+            prune(newMaterial.factors);
+
+            gltf.materials[i] = newMaterial;
         });
 
         return Promise.resolve(gltf);
@@ -314,6 +344,8 @@ export class GLTFAsset extends Asset
             })
         });
 
+        gltf.primitiveCount = primId;
+
         return Promise.resolve(gltf);
     }
 
@@ -350,6 +382,12 @@ export class GLTFAsset extends Asset
                 positionAccessor.max[1] + positionAccessor.min[1],
                 positionAccessor.max[2] + positionAccessor.min[2]);
             prim.center.scale(0.5);
+
+            if (prim.attributes.NORMAL)
+            {
+                let cpuBuff = gltf.accessors[prim.attributes.NORMAL].bufferView.cpuBuffer;
+                prim.normals = new Float32Array(cpuBuff.buffer, cpuBuff.byteOffset, cpuBuff.byteLength / 4);
+            }
         }
 
     }

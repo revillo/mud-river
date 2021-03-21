@@ -15,7 +15,6 @@ const mod = {
 
     fragmentMain : [`
         finalColor = SAMPLE_2D(t_baseColor, v_PerFragment.uv0);
-        //finalColor = vec4(v_PerFragment.uv0, 1.0, 1.0);
     `]
 };
 

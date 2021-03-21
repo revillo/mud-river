@@ -13,7 +13,7 @@ const makeEntityName = function(gameEntity)
         //if (Component.name == "Transform" || Component.name == "PrimRender") return;
         if (Component.icon)
         {
-            names.push(`<button><img src="../src/ui/img/icon/${Component.icon}.png"></button>`);
+            names.push(`<button><img src="${SceneGraph.imgPath}/icon/${Component.icon}.png"></button>`);
         }
         else
         {
@@ -158,3 +158,4 @@ SceneGraph._onSelected = function(gameEntity, componentIndex)
 }
 
 SceneGraph.onSelected = () => {};
+SceneGraph.imgPath = "../src/ui/img";

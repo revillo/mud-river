@@ -625,3 +625,10 @@ export const forEach = (function() {
     return a;
   };
 })();
+
+
+export function sign(a, b)
+{
+  a[0] = b[0] >= 0 ? 1 : -1;
+  a[1] = b[1] >= 0 ? 1 : -1;
+}

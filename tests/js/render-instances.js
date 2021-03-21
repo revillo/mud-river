@@ -40,12 +40,21 @@ var start = function()
         const sphere = new Sphere(1.0);
         const sphereGeometry = sphere.createGeometry();
 
+        const vertBufferView = bufferManager.allocVertexBufferView(sphereGeometry.vertices);
+        const indexBufferView = bufferManager.allocIndexBufferView(sphereGeometry.indices);
+
+        /*
         const binding = bufferManager.createGeometryBinding(sphereGeometry, 
             [DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0], 
             [DefaultAttributes.INSTANCE_MATRIX],
             instanceBB.getInstanceBufferView()
         );
-  
+      */
+
+        var attrGen = new AttributeLayoutGenerator([DefaultAttributes.POSITION, DefaultAttributes.NORMAL, DefaultAttributes.UV0], [DefaultAttributes.INSTANCE_MATRIX], true, true); 
+        const sphereAttribLayout = attrGen.generateAttributeLayout(vertBufferView, instanceBB.getInstanceBufferView());
+        const binding = gpu.createGeometryBinding(sphereAttribLayout, indexBufferView);
+            
         const localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", 1, program.uniformBlocks.Locals);
         const myBlock = localsBuffer.getBlock(0);
         mat4.identity(myBlock.model);
@@ -96,7 +105,7 @@ var start = function()
     {
         let time = timer.now();
 
-        mat4.fromTranslation(m2, [0, Math.sin(time), 0]);
+        mat4.fromTranslation(m2, [3, Math.sin(time), 0]);
         instanceBB.uploadBlocks(1, 1);
 
         renderer.clear({r: 0, g: 0, b: 0, a: 1});

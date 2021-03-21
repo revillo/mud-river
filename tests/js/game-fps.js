@@ -11,6 +11,7 @@ import { Vector3 } from "../../src/math/index.js"
 import { Timer } from "../../src/util/timer.js"
 import { vec3 } from "../../src/glm/index.js"
 import { ShaderNormals } from "../../src/buff/shader-mods/normals.js"
+import { Collision } from "../../src/index.js"
 
 let tempVec3 = Vector3.new();
 
@@ -43,7 +44,7 @@ class ShootingPlayer extends CharacterController
         this._ballAsset = this.context.gltfManager.fromUrl("gltf/src/ball.gltf");
         const P = this.context.PHYSICS;
         this._ballCollider = P.ColliderDesc.ball(0.1)
-            .setCollisionGroups(P.getCollisionGroups([P.GROUP_DYNAMIC], [P.GROUP_DYNAMIC, P.GROUP_STATIC]))
+            .setCollisionGroups(Collision.getCollisionGroups([Collision.DYNAMIC], [Collision.DYNAMIC, Collision.STATIC]))
             .setRestitution(0.7)
             .setRestitutionCombineRule(P.CoefficientCombineRule.Max);
     }
@@ -68,7 +69,7 @@ class ShootingPlayer extends CharacterController
             tempVec3.scale(0.05);
             ball.get(Body).applyImpulse(tempVec3);
     
-            ball.get(ModelRender).configure(this._ballAsset, [ShaderNormals]);
+            ball.get(ModelRender).configure(this._ballAsset, {shaderMods: [ShaderNormals]});
         }
     }
 }

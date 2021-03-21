@@ -23,11 +23,13 @@ const DefaultBindings =
 
     keys : 
     {
-        w: "Forward",
-        a : "Left",
-        s : "Backward",
-        d : "Right",
-       " ": "Jump" 
+        KeyW : "Forward",
+        KeyA : "Left",
+        KeyS : "Backward",
+        KeyD : "Right",
+        KeyE : "Interact",
+        Space: "Jump",
+        ShiftLeft : "Sprint"
     }
 }
 
@@ -148,7 +150,7 @@ export class InputLayer
     
     on_keydown(e)
     {
-        const action = this.bindings.keys[e.key];
+        const action = this.bindings.keys[e.code];
 
         if (action)
         {
@@ -162,7 +164,7 @@ export class InputLayer
 
     on_keyup(e)
     {
-        const action = this.bindings.keys[e.key];
+        const action = this.bindings.keys[e.code];
         if (action)
         {
             this.buttonTracker.delete(action);

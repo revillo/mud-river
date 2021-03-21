@@ -1,4 +1,5 @@
 import { Lifetime } from "../assets/assets.js";
+import { Collision } from "../game/collision.js";
 import { EntityComponent } from "../game/game-context.js";
 import { mat4, quat, vec3 } from "../glm/index.js";
 import { Quaternion, Vector3 } from "../math/index.js";
@@ -6,6 +7,7 @@ import { Transform } from "./transform.js";
 
 const tempVec3 = new Vector3();
 const tempQuat = new Quaternion();
+
 
 /**
  * @class
@@ -16,9 +18,10 @@ export class Body extends EntityComponent
     _type = Body.DISABLED;
     _body = null;
     lifetime = new Lifetime;
-
-    options = {
-        lockRotations : false
+    config = {
+        lockRotations : false,
+        shapeType : Body.TRIMESH,
+        collisionGroups : Collision.getCollisionGroups([Collision.STATIC], [Collision.DYNAMIC, Collision.PLAYER])
     };
 
     start()
@@ -36,9 +39,9 @@ export class Body extends EntityComponent
         return this._body;
     }
 
-    configure(physicsType, options)
+    configure(physicsType, config)
     {
-        this.options = options || this.options;
+        Object.assign(this.config, config);
         this.type = physicsType;
     }
 
@@ -84,12 +87,12 @@ export class Body extends EntityComponent
             break;
         }
 
-        this.options.lockRotations && (desc = desc.lockRotations());
+        this.config.lockRotations && (desc = desc.lockRotations());
 
         if (desc)
         {
             this._body = this.context.physicsWorld.createRigidBody(desc);
-            this.context.dynamicMap.set(this._body.handle, this);
+            this.context.dynamicBodyMap.set(this._body.handle, this);
 
             this.syncTransformToBody();
         }
@@ -99,7 +102,8 @@ export class Body extends EntityComponent
 
     addCollider(colliderDesc)
     {
-        this.context.physicsWorld.createCollider(colliderDesc, this._body.handle);
+        let collider = this.context.physicsWorld.createCollider(colliderDesc, this._body.handle);
+        this.context.colliderMap.set(collider.handle, this.entity);
     }    
 
     syncTransformToBody()
@@ -117,7 +121,7 @@ export class Body extends EntityComponent
         var pos = this._body.translation();
         tempVec3.set(pos.x, pos.y, pos.z)
 
-        if (this.options.lockRotations)
+        if (this.config.lockRotations)
         {
             this.get(Transform).setWorldTranslation(tempVec3);
         }
@@ -134,7 +138,13 @@ export class Body extends EntityComponent
         this._body.applyForce(force, true);
     }
 
-    setLinearDamping(damping)
+    applyAcceleration(accel)
+    {
+        vec3.scale(tempVec3, accel, this._body.mass());
+        this._body.applyForce(tempVec3);
+    }
+
+    set linearDamping(damping)
     {
         this._body.setLinearDamping(damping);
     }
@@ -157,6 +167,7 @@ export class Body extends EntityComponent
         const gltf = gltfAsset.gltf;
         const world = this.context.physicsWorld;
         const body = this._body;
+        const thiz = this;
 
         function nodeHelper(node)
         {
@@ -168,27 +179,29 @@ export class Body extends EntityComponent
                 mat4.getRotation(tempQuat, node.matrix);
 
                 node.mesh.primitives.forEach(prim => {
-                    if (prim.verticesPhys)
+
+                    let colliderDesc = null;
+
+                    if (thiz.config.shapeType == Body.TRIMESH)
                     {
-                        let colliderDesc = P.ColliderDesc.trimesh(prim.verticesPhys, prim.indicesPhys);
-                    
-
-                        if (node.translation)
-                        {
-                            colliderDesc.setTranslation(tempVec3[0], tempVec3[1], tempVec3[2]);
-                        }
-
-                        if (node.rotation)
-                        {
-                            colliderDesc.setRotation(tempQuat[0], tempQuat[1], tempQuat[2], tempQuat[3]);
-                        }
-
-                        colliderDesc.setCollisionGroups(P.getCollisionGroups([P.GROUP_STATIC], [P.GROUP_DYNAMIC, P.GROUP_PLAYER]));
-
+                        colliderDesc = P.ColliderDesc.trimesh(prim.verticesPhys, prim.indicesPhys);
+                        colliderDesc.setTranslation(tempVec3[0], tempVec3[1], tempVec3[2]);
                         
-                       world.createCollider(colliderDesc, body.handle);
-                
                     }
+                    else if (thiz.config.shapeType == Body.BOX)
+                    {
+                        colliderDesc = P.ColliderDesc.cuboid(prim.extents[0], prim.extents[1], prim.extents[2]);
+                        colliderDesc.setTranslation(tempVec3[0] + prim.center[0], tempVec3[1] + prim.center[1], tempVec3[2] + prim.center[2]);
+                    }
+
+                    if (node.rotation)
+                    {
+                        colliderDesc.setRotation(tempQuat[0], tempQuat[1], tempQuat[2], tempQuat[3]);
+                    }
+
+                    colliderDesc.setCollisionGroups(thiz.config.collisionGroups);
+
+                    thiz.addCollider(colliderDesc);
                 });
             }
 
@@ -205,7 +218,12 @@ export class Body extends EntityComponent
 
         if (this._body)
         {
-            this.context.dynamicMap.delete(this._body.handle);
+            for (let i = 0; i < this._body.numColliders; ++i)
+            {
+                this.context.colliderMap.delete(this._body.collider(i));
+            }
+
+            this.context.dynamicBodyMap.delete(this._body.handle);
             this.context.physicsWorld.removeRigidBody(this._body);
             this._body = null;
         }
@@ -216,7 +234,11 @@ export class Body extends EntityComponent
 Body.DISABLED = 0;
 Body.STATIC = 1;
 Body.DYNAMIC = 2;
-Body.KINEMATIC = 2;
+Body.KINEMATIC = 3;
+
+Body.TRIMESH = 4;
+Body.HULL = 5;
+Body.BOX = 6;
 
 Body.views = {
     static_moved : ['static', 'moved']
@@ -228,7 +250,7 @@ Body.update = function(dt, clock, context)
     context.physicsWorld.step();
     
     context.physicsWorld.forEachActiveRigidBodyHandle(handle => {
-        context.dynamicMap.get(handle).syncBodyToTransform();
+        context.dynamicBodyMap.get(handle).syncBodyToTransform();
     });
 
     this.views.static_moved(e => {
