@@ -63,3 +63,15 @@ Math.lerp = function(a, b, t)
 {
   return a * (1-t) + b * t;
 }
+
+Math.approach = function(a, b, amt)
+{
+  const diff = b - a;
+  
+  if (Math.abs(diff) < Math.abs(amt))
+  {
+    return b;
+  }
+
+  return a + Math.sign(diff) * amt;
+}

@@ -3,7 +3,7 @@ import {GameEditor} from "../../src/ui/components/game-editor.js"
 import {WebApp} from "../../src/app/webapp.js"
 import {GameContext, EntityComponent} from "../../src/game/game-context.js"
 import {GameLayer} from "../../src/app/layers/game-layer.js"
-import {CharacterController, FreeController} from "../../src/components/controller.js"
+import {FreeController} from "../../src/components/controller.js"
 import {Camera} from "../../src/components/camera.js"
 import { Transform } from "../../src/components/transform.js";
 import { Body } from "../../src/components/body.js";

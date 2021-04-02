@@ -1,4 +1,4 @@
-var defConfig = {
+const DefaultPeerConfig = {
     iceServers: [
         {
             urls: "turn:127.0.0.1",
@@ -11,20 +11,27 @@ var defConfig = {
     ]
 }
 
+export {DefaultPeerConfig}
+
 export class RTCPeer
 {
-    constructor(webrtc, sendIce, config = defConfig)
+    constructor(webrtc, sendJson, config = DefaultPeerConfig)
     {
-        this.sendIce = sendIce;
-        this.config = config;
+        this.sendJson = sendJson;
+        this.config = DefaultPeerConfig;
         this.webrtc = webrtc;
-        this.peerConnection = new webrtc.RTCPeerConnection(config);
+        this.peerConnection = new webrtc.RTCPeerConnection(this.config);
+
         var thiz = this;
+        this.channels = {};
 
         this.peerConnection.onicecandidate = e => {
+            console.log("sending candidate...");
             if (e.candidate)
             {
-                thiz.sendIceCandidate(e.candidate);
+                thiz.sendJson({
+                    candidate : e.candidate
+                })
             }
         }
 
@@ -34,7 +41,7 @@ export class RTCPeer
 
         this.peerConnection.ondatachannel = (e) => {
             console.log("Receive data channel");
-            thiz.setupChanel(e.channel);
+            thiz.onChannel(e.channel);
         }
 
         this.peerConnection.onerror = (error) => {
@@ -50,7 +57,7 @@ export class RTCPeer
         }
     }
 
-    setupChanel(channel)
+    onChannel(channel)
     {
         channel.onopen = ()=>
         {
@@ -68,56 +75,52 @@ export class RTCPeer
         } 
     }
 
-    createDataChannel(label)
+    createDataChannel(label, config)
     {
-        console.log("Create channel", label);
-        var channel = this.peerConnection.createDataChannel(label);
-        this.setupChanel(channel);
-    }
-
-    sendIceCandidate(candidate)
-    {
-        this.sendIce(candidate);
+        //console.log("Create channel", label);
+        var channel = this.peerConnection.createDataChannel(label, config);
+        return channel;
     }
 
     receiveIceCandidate(candidate)
     {
         const peerConnection = this.peerConnection;
-        return peerConnection.addIceCandidate(candidate)
+        return peerConnection.addIceCandidate(candidate).catch(console.error)
     }
 
-    receiveOffer(offer, sendAnswer, sendError)
+    receiveOffer(offer)
     {
-        const peerConnection = this.peerConnection;
-        const webrtc = this.webrtc;
+        console.log("receive offer");
 
-        peerConnection.setRemoteDescription(new webrtc.RTCSessionDescription(offer))
+        const peerConnection = this.peerConnection;
+        const sendJson = this.sendJson;
+
+        return peerConnection.setRemoteDescription(new this.webrtc.RTCSessionDescription(offer))
             .then(() => peerConnection.createAnswer())
             .then(answer => peerConnection.setLocalDescription(answer))
-            .then(() => sendAnswer(peerConnection.localDescription))
-            .catch(sendError)
+            .then(() => sendJson({answer: peerConnection.localDescription}))
+            .catch(e => sendJson({error: e}));
     }
 
     receiveAnswer(answer)
     {
+        console.log("receive answer");
+
         const peerConnection = this.peerConnection;
-        return peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+        return peerConnection.setRemoteDescription(new this.webrtc.RTCSessionDescription(answer));
     }
     
     createOffer()
     {
         const peerConnection = this.peerConnection;
+        const sendJson = this.sendJson;
 
-        return peerConnection.createOffer()
-            .then(offer => {
-
-                return new Promise((resolve, reject) =>
-                {
-                    peerConnection.setLocalDescription(offer)
-                        .then(() => resolve(offer))
-                        .catch((err) => reject(err));
-                })
-            })
+        peerConnection.createOffer()
+        .then(offer => peerConnection.setLocalDescription(offer))
+        .then(() => sendJson({
+            offer : peerConnection.localDescription
+        }))
+        .catch(console.error);
     }
 
     stop()

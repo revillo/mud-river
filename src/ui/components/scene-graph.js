@@ -37,6 +37,7 @@ const makeEntityName = function(gameEntity)
 export class SceneGraph extends UIComponent
 {
     _gameEntity = null
+    _expanded = false;
 
     start()
     {
@@ -48,21 +49,49 @@ export class SceneGraph extends UIComponent
         let thiz = this;
 
         this.nameSpan = document.createElement("span");
-
-        /*
-        this.nameSpan.onclick = function()
+        this.nameSpan.onclick = function(e) 
         {
-            document.querySelectorAll('.sg-selected').forEach(node => {
-                node.classList.remove('.sg-selected');
-            });
-
-            thiz.nameSpan.class = "sg-selected";
-            thiz.nameSpan.blur();
-            SceneGraph.onSelected(thiz._gameEntity);
+            if (e.target == thiz.nameSpan)
+                thiz.expanded = !thiz.expanded;
         }
-        */
 
         this.entity.div.appendChild(this.nameSpan);
+    }
+
+
+    get expanded()
+    {
+        return this._expanded;
+    }
+
+    set expanded(expanded)
+    {
+        if (expanded)
+        {
+            this.expand();
+        }
+        else
+        {
+            this.collapse();
+        }
+    }
+
+    expand()
+    {
+        if (!this._expanded)
+        {
+            this._expanded = true;
+            this.refresh();    
+        }
+    }
+
+    collapse()
+    {
+        if (this._expanded)
+        {
+            this._expanded = false;
+            this.entity.eachChild(e => e.destroy());
+        }
     }
 
     /**
@@ -87,15 +116,6 @@ export class SceneGraph extends UIComponent
             for (let i = 0; i < buttons.length; i++)
             {
                 let button = buttons[i];
-
-                /*
-                button.style.fontSize = "0.5rem";
-                button.style.margin = "0px";
-                
-                button.style.background = "transparent";
-                button.style.color = "white";
-                */
-
                 button.onclick = function()
                 {
                     document.querySelectorAll('.sg-selected').forEach(node => {
@@ -115,6 +135,11 @@ export class SceneGraph extends UIComponent
 
     refresh()
     {
+        if (!this._expanded)
+        {
+            return;
+        }
+
         if (!this._gameEntity) return;
         let thiz = this;
     

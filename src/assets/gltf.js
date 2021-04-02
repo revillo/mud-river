@@ -155,7 +155,7 @@ export class GLTFAsset extends Asset
             });
 
 
-            anim.channels = anim.channels.filter(channel => channel.target.path == "rotation");
+            //anim.channels = anim.channels.filter(channel => channel.target.path == "rotation");
 
             safeEach(anim.channels, (channel) => {
                 channel.target.node = gltf.nodes[channel.target.node];

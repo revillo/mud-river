@@ -90,6 +90,12 @@ export class Transform extends EntityComponent
         this._markDirty();
     }
 
+    setLocalEulers(rx, ry, rz)
+    {
+        quat.fromEuler(tempQuat, rx, ry, rz);
+        this.setLocalRotation(tempQuat);
+    }
+
     setLocalRotation(q)
     {
         this._localMatrix.setRotation(q);
@@ -197,11 +203,21 @@ export class Transform extends EntityComponent
         this._dirty && this._fixDirty();
         return this._worldMatrix;
     }
+
+    get localMatrix()
+    {
+        return this._localMatrix;
+    }
 }
 
 
 Transform.icon = "Transform"
 
+/**
+ * 
+ * @param {GameEntity} entity 
+ * @return {Matrix4}
+ */
 Transform.getWorldMatrix = function(entity)
 {
     if (entity.has(Transform))
@@ -210,4 +226,26 @@ Transform.getWorldMatrix = function(entity)
     }
 
     return Transform.getWorldMatrix(entity.parent);
+}
+
+
+let tempShift = Vector3.new();
+
+
+Transform.shiftOrigin = function(context, translation)
+{
+    tempShift.set(-translation[0], -translation[1], -translation[2]);
+
+    context.root.eachChild(e => {
+
+        if (e.has(Transform))
+        {
+            e.get(Transform).worldTranslate(tempShift);
+            return false;
+        }
+
+        return true;
+    });    
+
+    context.shiftOrigin(translation);
 }

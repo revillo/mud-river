@@ -1,7 +1,7 @@
 import { Lifetime } from "../assets/assets.js";
 import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
 import { EntityComponent, GameEntity } from "../game/game-context.js";
-import { mat4 } from "../glm/index.js";
+import { mat4, vec3 } from "../glm/index.js";
 import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 import { GLTFEnum } from "./../assets/gltf.js"
@@ -64,9 +64,17 @@ export class Rig extends EntityComponent
     }
 }
 
+let noCull = function() 
+{
+    return true;
+}
+
 export class CullRegion extends EntityComponent
 {
     primRenders = [];
+    _cullBody = null;
+    _collider = null;
+    cullFunction = noCull;
 
     addPrim(primRender)
     {
@@ -79,15 +87,29 @@ export class CullRegion extends EntityComponent
         this.context.cullWorld.removeRigidBody(this._cullBody);
     }
 
-    addToCullWorld(center, radius)
+    addToCullWorld()
     {
-        let P = this.context.PHYSICS;
+        if (this._cullBody)
+        {
+            this.remakeCollider();
+            return;
+        }
 
+        let P = this.context.PHYSICS;
         var desc = P.RigidBodyDesc.newStatic();
         this._cullBody = this.context.cullWorld.createRigidBody(desc);
         this._collider = this.context.cullWorld.createCollider(this.colliderDesc, this._cullBody.handle);
         this.context.cullMap.set(this._collider.handle, this);
     }
+
+    remakeCollider()
+    {
+        this.context.cullMap.delete(this._collider.handle);
+        this.context.cullWorld.removeCollider(this._collider);
+        this._collider = this.context.cullWorld.createCollider(this.colliderDesc, this._cullBody.handle);
+        this.context.cullMap.set(this._collider.handle, this);
+    }
+
 }
 
 export class CullSphere extends CullRegion
@@ -300,6 +322,7 @@ export class ModelRender extends EntityComponent
 
         if(loop) time = (time % this.animation.duration);
         
+        
         for (let channel of this.animation.channels)
         {
             let entity = this.nodeEntityMap.get(channel.target.node.id);
@@ -307,6 +330,7 @@ export class ModelRender extends EntityComponent
             let vs = channel.sampler.values;
             let times = channel.sampler.times;
 
+            let numFrames = times.length;
             let frameIndex = 0;//todo
             let nextTime = times[frameIndex + 1];
 
@@ -330,7 +354,7 @@ export class ModelRender extends EntityComponent
             {
                 frameDelta = (time - prevTime) / (nextTime - prevTime);
             }
-
+            
             if (channel.target.path == GLTFEnum.ROTATION)
             {
                 let i = frameIndex * 4;
@@ -342,6 +366,16 @@ export class ModelRender extends EntityComponent
                 tempQuat.slerpTo(temp2Quat, frameDelta);
                 
                 entity.get(Transform).setLocalRotation(tempQuat);
+            }
+            else if (channel.target.path == GLTFEnum.TRANSLATION)
+            {
+                let i = frameIndex * 3;
+                tempVec3.set(vs[i], vs[i+1], vs[i+2]);
+                i+=3;
+                temp2Vec3.set(vs[i], vs[i+1], vs[i+2]);
+
+                vec3.lerp(tempVec3, tempVec3, temp2Vec3, frameDelta);
+                entity.get(Transform).setLocalTranslation(tempVec3);
             }
             
         }

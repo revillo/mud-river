@@ -115,6 +115,11 @@ export class AssetManager //Abstract
         return asset;
     }
 
+    fromUri(uri)
+    {
+        
+    }
+
     fromAssets(name)
     {
         return this.fromUrl(this.assetsDir + name);

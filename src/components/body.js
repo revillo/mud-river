@@ -241,7 +241,8 @@ Body.HULL = 5;
 Body.BOX = 6;
 
 Body.views = {
-    static_moved : ['static', 'moved']
+    static_moved : ['static', 'moved'],
+    body : [Body]
 }
 
 Body.update = function(dt, clock, context) 
@@ -254,6 +255,14 @@ Body.update = function(dt, clock, context)
     });
 
     this.views.static_moved(e => {
+        e.get(Body).syncTransformToBody();
+    });
+}
+
+
+Body.postShift = function(t)
+{
+    this.views.body(e => {
         e.get(Body).syncTransformToBody();
     });
 }

@@ -102,8 +102,8 @@ export class InputLayer
         {
             this.buttonTracker.add(action);
             this.dispatchAction(action, {
-                x : e.screenX / this.canvas.width,
-                y : e.screenY / this.canvas.height,
+                x : e.offsetX / this.canvas.width,
+                y : e.offsetY / this.canvas.height,
                 isPressed : true
             });
 
@@ -119,8 +119,8 @@ export class InputLayer
         {
             this.buttonTracker.delete(action);
             this.dispatchAction(action, {
-                x : e.screenX / this.canvas.width,
-                y : e.screenY / this.canvas.height,
+                x : e.offsetX / this.canvas.width,
+                y : e.offsetY / this.canvas.height,
                 isPressed : false
             });
             e.preventDefault();
@@ -133,13 +133,14 @@ export class InputLayer
     {
         const action = this.bindings.mouse_move;
 
+        
         if (action)
         {
             this.dispatchAction(action, {
                 dx : e.movementX / this.canvas.width,
                 dy : e.movementY / this.canvas.height,
-                x : e.screenX / this.canvas.width,
-                y : e.screenY / this.canvas.height
+                x : e.offsetX / this.canvas.width,
+                y : e.offsetY / this.canvas.height
             });
         }
 

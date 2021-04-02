@@ -2,6 +2,7 @@ import { toRadian } from "../glm/common.js";
 import { mat4 } from "../glm/index.js";
 import { Transform } from "./transform.js";
 import {EntityComponent} from "../game/game-context.js"
+import { Vector3 } from "../math/index.js";
 
 /**
  * @class
@@ -9,16 +10,42 @@ import {EntityComponent} from "../game/game-context.js"
  */
 export class Camera extends EntityComponent
 {
-    //viewMatrix = mat4.create();
     fovY = toRadian(60);
     near = 0.01;
     far = 1000;
+
+    _tanX = 0.577;
+    _tanY = 0.577;
 
     start()
     {
         this.entity.ensure(Transform);
     }
-    //todo ensure transform
+
+    /**
+     * 
+     * @param {number} clipX -1 to 1 
+     * @param {number} clipY -1 to 1
+     * @param {Vector3} outOrigin out ray origin
+     * @param {Vector3} outDirection out ray direction
+     */
+    getRay(clipX, clipY, outOrigin, outDirection)
+    {
+        let wm = this.get(Transform).worldMatrix;
+
+        wm.getTranslation(outOrigin);
+
+        outDirection.set(
+            this._tanX * clipX,
+            this._tanY * clipY,
+            -1.0
+        );
+
+        outDirection.normalize();
+
+        outDirection.rotateMat4(wm);
+    }
+
 
     /**
      * 

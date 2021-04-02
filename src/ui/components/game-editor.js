@@ -66,11 +66,11 @@ export class GameEditor extends UIComponent
         this.graphContainer.style.overflow = "auto";
 
         this.scenePanel = this.graphContainer.createChild(SceneGraph);
+        
         this.scenePanel.get(SceneGraph).gameEntity = gameContext.root;
+        this.scenePanel.get(SceneGraph).expand();
 
         const thiz = this;
-
-
 
         /*
         refresh.onclick = function() {

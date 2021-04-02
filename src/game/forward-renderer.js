@@ -1,4 +1,5 @@
 import { BinType } from "../buff/gpu-types.js";
+import { GPUContext } from "../buff/gpu.js";
 import { ModelRender, PrimRender, Rig } from "../components/model-render.js";
 import { Transform } from "../components/transform.js";
 import { mat4 } from "../glm/index.js";
@@ -7,6 +8,10 @@ import { Collision } from "./collision.js";
 
 const tempVec3 = new Vector3;
 const tempQuat = new Quaternion;
+
+let defaultGlobals = [
+    ['viewProjection', BinType.MAT4]
+]
 
 export class ForwardRenderer
 {
@@ -17,15 +22,21 @@ export class ForwardRenderer
     clearColor =  {r: 0.3, g: 0.3, b: 0.3, a: 1}
 
 
-    constructor(gameContext)
+    /**
+     * 
+     * @param {GameContext} gameContext 
+     * @param {BinSchema} globals 
+     */
+    constructor(gameContext, globals = defaultGlobals)
     {
+        /**
+         * @type {GPUContext}
+         */
         this.gpu = gameContext.gpu;
         this.canvas = this.gpu.canvas;
         this.aspect = this.canvas.width / this.canvas.height;
 
-        this.globalsBuffer = gameContext.bufferManager.allocUniformBlockBuffer("Globals", 1, [
-            ['viewProjection', BinType.MAT4]
-        ]);
+        this.globalsBuffer = gameContext.bufferManager.allocUniformBlockBuffer("Globals", 1, globals);
 
         this.projectionMatrix = mat4.create();
         this.viewMatrix = mat4.create();
@@ -75,6 +86,9 @@ export class ForwardRenderer
         prim.material && prim.material.unbindTextures(program);
     }
 
+    /**
+     * @param {Camera} cam
+     */
     set mainCamera(cam)
     {
         this._mainCamera = cam;
@@ -90,6 +104,9 @@ export class ForwardRenderer
         let verts = this.frustumVerts || new Float32Array(3 * 8);
         let tanY = Math.tan(fovY/2);
         let tanX = Math.tan(fovY * this.aspect/2);
+
+        this._mainCamera._tanX = tanX;
+        this._mainCamera._tanY = tanY;
 
         let x0 = tanX * near;
         let x1 = tanX * far;
@@ -132,37 +149,20 @@ export class ForwardRenderer
         this.frustumShape = new this.context.PHYSICS.ConvexPolyhedron(verts);
     }
 
-    render()
-    { 
-        if (!this._mainCamera)
-        {
-            return;
-        }
-
-        let newAspect = this.canvas.width / this.canvas.height;
-
-        if (newAspect != this.aspect)
-        {
-            this.aspect = newAspect;
-            this.computeFrustumShape();
-        }
-
+    preRender()
+    {
         this.gpu.clear(this.clearColor);
-        this.gpu.setViewport(0, 0, this.canvas.width, this.canvas.height);
+    }
 
-        mat4.perspective(this.projectionMatrix, this._mainCamera.fovY, this.aspect, this._mainCamera.near, this._mainCamera.far);
-        
-        const camTrans = this._mainCamera.get(Transform).worldMatrix;
-        camTrans.decompose(tempVec3, tempQuat)
+    postRender()
+    {
 
-        this._mainCamera.getViewMatrix(this.viewMatrix);
-        
-        mat4.multiply(this.globalBlock.viewProjection, this.projectionMatrix, this.viewMatrix);
+    }
 
+    renderCullWorld()
+    {
+        this.context.frameTimers.start("cull");
         const thiz = this;
-        
-        
-       this.context.frameTimers.start("cull");
 
         this.cullWorld.step();
 
@@ -188,19 +188,60 @@ export class ForwardRenderer
 
         this.context.frameTimers.start("prim");
         this.firstPrim = true;
+
+        let numRendered = 0;
         for (var p = 0; p < i; p++)
         {
-            this.regionsToRender[p].primRenders.forEach(primC => thiz.renderPrim(primC));
-            //this.renderPrim(this.primsToRender[p]);
-        }        
+            let region = this.regionsToRender[p];
+            if (region.cullFunction(this._mainCamera))
+            {            
+                numRendered += 1;
+                region.primRenders.forEach(primC => thiz.renderPrim(primC));
+            }
+        }    
+        
+        //console.log(numRendered);
 
         this.context.frameTimers.stop("prim");
+    }
+
+    render()
+    { 
+        if (!this._mainCamera)
+        {
+            return;
+        }
+
+        this.gpu.setViewport(0, 0, this.canvas.width, this.canvas.height);
+
+        let newAspect = this.canvas.width / this.canvas.height;
+
+        if (newAspect != this.aspect)
+        {
+            this.aspect = newAspect;
+            this.computeFrustumShape();
+        }
+
+
+        mat4.perspective(this.projectionMatrix, this._mainCamera.fovY, this.aspect, this._mainCamera.near, this._mainCamera.far);
         
-        //console.log(i);
+        const camTrans = this._mainCamera.get(Transform).worldMatrix;
+        camTrans.decompose(tempVec3, tempQuat)
+
+        this._mainCamera.getViewMatrix(this.viewMatrix);
+        
+        mat4.multiply(this.globalBlock.viewProjection, this.projectionMatrix, this.viewMatrix);
+
+
+        this.preRender();
+       
+        this.renderCullWorld();
     
         //this.context.frameTimers.start("prim");
         //this.renderView((e) => thiz.renderPrim(e.get(PrimRender)));
         //this.context.frameTimers.stop("prim");
+
+        this.postRender();
         
     }
     

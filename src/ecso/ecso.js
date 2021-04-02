@@ -3,10 +3,12 @@
  */
 export class Entity
 {
+    _context = null;
+    components = new Map();
+
     constructor(context)
     {
         this._context = context;
-        this.components = new Map();
     }
 
     _startComponents()

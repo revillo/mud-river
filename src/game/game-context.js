@@ -19,6 +19,8 @@ import { FrameMetrics } from "../util/timer.js";
   */
 export class EntityComponent
 {
+    _entity = null;
+
     /**
      * @return {GameEntity}
      */
@@ -174,7 +176,8 @@ export class GameContext extends EntityPool
         }
         
         this.updaters = new Map();
-        this.systems = [];
+        this.updateSystems = [];
+        this.shiftSystems = [];
 
         this.initPhysics(gravity);
 
@@ -223,8 +226,13 @@ export class GameContext extends EntityPool
 
         if (Component.update)
         {
-            this.systems.push(Component);
+            this.updateSystems.push(Component);
         }
+
+        if (Component.postShift)
+        {
+            this.shiftSystems.push(Component);
+        }        
 
         if (!Component.prototype) return;
 
@@ -251,6 +259,14 @@ export class GameContext extends EntityPool
         return e;
     }
 
+    shiftOrigin(v3)
+    {
+        for (let shiftSys of this.shiftSystems)
+        {
+            shiftSys.postShift(v3);
+        }
+    }
+
     update(dt, clock)
     {
         this.frameTimers.stop("nextframe");
@@ -258,7 +274,7 @@ export class GameContext extends EntityPool
         this.frameTimers.start("frame");
 
         this.frameTimers.start("sys")
-        this.systems.forEach(sys => sys.update(dt, clock, this));
+        this.updateSystems.forEach(sys => sys.update(dt, clock, this));
         this.frameTimers.stop("sys");
 
         this.frameTimers.start("comp");

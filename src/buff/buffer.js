@@ -109,7 +109,7 @@ class BlockBuffer
         {
             const type = prop.type;
             block[prop.name] = new type.BufferType(this.cpuBuffer, offset, type.typeCount);
-            offset += prop.blockOffset;
+            offset += type.sizeBytes;
         }
         
 
