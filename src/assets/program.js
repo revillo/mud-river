@@ -11,6 +11,9 @@ export class ProgramAsset extends Asset
 
     setProgram(program)
     {
+        /**
+         * @type {RasterProgram}
+         */
         this.program = program;
         this.isLoaded = true;
         this.isOnGPU = true;
@@ -26,6 +29,11 @@ export class ProgramManager extends AssetManager
         this.gpu = gpu;
     }
 
+    /**
+     * 
+     * @param  {...any} mods 
+     * @returns {ProgramAsset}
+     */
     fromMods(...mods)
     {
         mods = mods.flat();

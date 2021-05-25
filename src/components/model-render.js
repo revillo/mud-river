@@ -459,6 +459,7 @@ export class ModelRender extends EntityComponent
                 node.mesh.primitives.forEach(prim =>{
                     if (node.skin)
                     {
+                        //thiz.animProgramAsset = thiz.animProgramAsset || 
                         prims[prim.id].program = thiz.animProgramAsset.program;
                     }
                     let primEntity = entity.createChild(PrimRender, "moved");

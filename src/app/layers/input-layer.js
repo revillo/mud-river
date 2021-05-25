@@ -28,6 +28,7 @@ const DefaultBindings =
         KeyS : "Backward",
         KeyD : "Right",
         KeyE : "Interact",
+        KeyF : "Fly",
         Space: "Jump",
         ShiftLeft : "Sprint"
     }

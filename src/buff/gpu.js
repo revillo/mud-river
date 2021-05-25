@@ -107,7 +107,7 @@ export class GPUContext
             gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic'),
         }
 
-        gl.enable(gl.BLEND);
+        //gl.enable(gl.BLEND);
         //gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         //gl.enable(gl.CULL_FACE);
         //gl.cullFace(gl.BACK);
@@ -265,6 +265,7 @@ export class GPUContext
      * 
      * @param {Map<string, AttributeLayout>} attributeLayout 
      * @param {IndexLayout} indexLayout 
+     * @param {InstanceLayout?} instanceLayout 
      * @return {GPUGeometryBinding}
      */
     createGeometryBinding(attributeLayout, indexLayout, instanceLayout)
@@ -302,7 +303,6 @@ export class GPUContext
             indexType : indexType,
             mode : gl.TRIANGLES
         };
-
     }
 
     deleteGeometryBinding(meshBinding)
@@ -436,7 +436,7 @@ export class GPUContext
     /**
      * 
      * @param {GPUGeometryBinding} meshBinding 
-     * @param {number} instanceCount 
+     * @param {number?} instanceCount 
      */
     rasterizeMesh(geometryBinding, instanceCount)
     {

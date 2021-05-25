@@ -30,6 +30,10 @@ export class CharacterController extends Controller
     _onGround = false;
     _groundDistance = 0;
     _sweepShape = null;
+    
+    /**
+     * @type {Body}
+     */
     _body = null;
     _lookAngles = vec2.create();
     _groundPlane = new Plane();
@@ -186,11 +190,8 @@ export class CharacterController extends Controller
 
     }
 
-    update(dt, clock)
+    updateMovement()
     {
-
-        this.detectGround();
-
         vec3.zero(this._movement);
 
         this._tryingToMove = false;
@@ -219,9 +220,15 @@ export class CharacterController extends Controller
             this._movement[0] += 1;
         }
 
-        this._movement.rotateMat4(this.get(Transform).worldMatrix);
+    }
+
+    updateRunning(dt)
+    {
+        this.detectGround();
 
         let slope = 0.0;
+        
+        this._movement.rotateMat4(this.get(Transform).worldMatrix);
 
         if (this._onGround)
         {
@@ -244,5 +251,11 @@ export class CharacterController extends Controller
         }
 
         this._body.applyForce(this._movement);
+    }
+
+    update(dt, clock)
+    {
+        this.updateMovement();
+        this.updateRunning(dt);
     }
 }

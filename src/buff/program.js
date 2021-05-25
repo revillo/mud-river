@@ -9,9 +9,12 @@ export class RasterProgram
         let vertBuilder = new RasterShaderBuilder(gpu.platform, ShaderStage.VERTEX, shaderMods);
         let fragBuilder = new RasterShaderBuilder(gpu.platform, ShaderStage.FRAGMENT, shaderMods);
         
-        //console.log(vertBuilder.text);
-        //console.log(fragBuilder.text);
-
+        if (RasterProgram.debug)
+        {
+            console.log(vertBuilder.text);
+            console.log(fragBuilder.text);
+        }
+        
         const vertShader = gpu.createShader(vertBuilder.text, vertBuilder.stage);
         const fragShader = gpu.createShader(fragBuilder.text, fragBuilder.stage);
     

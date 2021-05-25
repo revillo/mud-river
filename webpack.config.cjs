@@ -9,12 +9,12 @@ module.exports = {
     optimization : {
         minimize: true
     },
+    mode: "production",
 
     resolve: {
         extensions: [".js"]
     },
 
-    mode: "production",
 
     experiments: {
         outputModule: false,
