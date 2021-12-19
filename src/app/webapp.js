@@ -83,11 +83,12 @@ export class WebApp extends App
     }
 
     on_load()
-    {       
+    {     
+        this.docLoaded = true;
+
         if (this.startRequest)
         { 
             this.startRequest = false;
-            this.docLoaded = true;
             this.start();
         }
     }

@@ -64,12 +64,9 @@ export class GameContext extends EntityPool
         }
 
         this.initPhysics(gravity);
-        
         this.updaters = new Map();
         this.updateSystems = [];
         this.shiftSystems = [];
-
-
         
         this.views = {
             static_moved : this.with('static', 'moved')

@@ -117,7 +117,6 @@ export class CharacterController extends Controller
 
     updateCameraTransform()
     {
-
         //quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
         //this.get(Transform).setLocalRotation(tempQuat);
 
