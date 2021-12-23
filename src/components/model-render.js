@@ -20,8 +20,6 @@ let tempQuat = new Quaternion();
 let temp2Quat = new Quaternion();
 let tempMat4 = new Matrix4();
 
-
-
 export class Rig extends EntityComponent
 {
     /**
@@ -126,6 +124,20 @@ export class CullSphere extends CullRegion
     }
 }
 
+CullSphere.views = {
+    moved : [CullSphere, Transform.TAG_MOVED]
+}
+
+CullSphere.update = function() {
+    this.views.moved(e => {
+        const wm = Transform.getWorldMatrix(e);
+        let cullBody = e.get(CullSphere)._cullBody;
+        wm.getTranslation(tempVec3);
+        //console.log(tempVec3);
+        cullBody.setTranslation(tempVec3);
+    });
+}
+
 export class CullBox extends CullRegion
 {
     configure(center, extents)
@@ -138,6 +150,20 @@ export class CullBox extends CullRegion
 
         this.addToCullWorld();
     }
+}
+
+CullBox.views = {
+    moved: [CullBox, Transform.TAG_MOVED]
+}
+
+CullBox.update = function() {
+    this.views.moved(e => {
+        const wm = Transform.getWorldMatrix(e);
+        let cullBody = e.get(CullBox)._cullBody;
+        wm.decompose(tempVec3, tempQuat);
+        cullBody.setTranslation(tempVec3);
+        cullBody.setRotation(tempQuat);
+    });
 }
 
 export class PrimRender extends EntityComponent
@@ -163,9 +189,7 @@ export class PrimRender extends EntityComponent
 }
 
 PrimRender.views = {
-    prim_moved : [PrimRender, "moved"],
-    cull_box_moved : [CullBox, "moved"],
-    cull_sphere_moved : [CullSphere, "moved"]
+    prim_moved : [PrimRender, Transform.TAG_MOVED]
 }
 
 PrimRender.update = function(dt, clock, context)
@@ -178,22 +202,6 @@ PrimRender.update = function(dt, clock, context)
         const wm =  Transform.getWorldMatrix(e);
         let primC = e.get(PrimRender);
         mat4.copy(primC.prim.locals.model, wm);
-    });
-
-    this.views.cull_box_moved(e => {
-
-        const wm = Transform.getWorldMatrix(e);
-        let cullBody = e.get(CullBox)._cullBody;
-        wm.decompose(tempVec3, tempQuat);
-        cullBody.setTranslation(tempVec3);
-        cullBody.setRotation(tempQuat);
-    });
-
-    this.views.cull_sphere_moved(e => {
-        const wm = Transform.getWorldMatrix(e);
-        let cullBody = e.get(CullSphere)._cullBody;
-        wm.getTranslation(tempVec3);
-        cullBody.setTranslation(tempVec3);
     });
 }
 
@@ -229,21 +237,19 @@ export class ModelRender extends EntityComponent
 
             this._instanceBuffer = this.context.bufferManager.allocInstanceBlockBuffer(
                 this.config.maxInstances || this.config.instanceCount, 
-                this.programAsset.program.instanceAttributes
-                , this.config.isStatic ? BufferUsage.STATIC : BufferUsage.DYNAMIC);
-                
+                this.programAsset.program.instanceAttributes,
+                this.config.isStatic ? BufferUsage.STATIC : BufferUsage.DYNAMIC
+            );    
         }
         else
         {
             this.programAsset = this.context.programManager.fromMods(...this.config.shaderMods);
-            
             //todo only if animated
             this.animProgramAsset = this.context.programManager.fromMods(ShaderSkinning, ...this.config.shaderMods);
-
         }
 
-
         this.asset = modelAsset;
+        return this;
     }
 
     getInstanceBlock(index)
@@ -462,7 +468,7 @@ export class ModelRender extends EntityComponent
                         //thiz.animProgramAsset = thiz.animProgramAsset || 
                         prims[prim.id].program = thiz.animProgramAsset.program;
                     }
-                    let primEntity = entity.createChild(PrimRender, "moved");
+                    let primEntity = entity.createChild(PrimRender, Transform.TAG_MOVED);
 
                     if (thiz.config.cullRegion)
                     {

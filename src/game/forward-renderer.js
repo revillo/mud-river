@@ -171,7 +171,6 @@ export class ForwardRenderer
         if (this.cullWorld.colliders.len() > 0)
         {
             this.cullWorld.intersectionsWithShape(
-                this.cullWorld.colliders, 
                 tempVec3, tempQuat, this.frustumShape, 
                 this.interactionGroups, 
                 (handle) => {

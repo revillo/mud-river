@@ -142,7 +142,7 @@ export class EntityPool
     add(entity, Component)
     {
         this.ensure(Component);
-        this.sets.get(Component).add(entity);
+        //this.sets.get(Component).add(entity);
         this._add(entity, Component);
     }
 

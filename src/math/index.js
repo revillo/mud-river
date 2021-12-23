@@ -112,6 +112,16 @@ export class Vector3 extends Float32Array
         console.log(`${name}[${this[0].toFixed(3)}, ${this[1].toFixed(3)}, ${this[2].toFixed(2)}]`)
     }
 
+    reset()
+    {
+        this.set(0,0,0);
+    }
+
+    zero()
+    {
+        this.reset();
+    }
+
     packOctahedral(outVec2)
     {  
         let xy = tempVec2;
@@ -200,6 +210,16 @@ export class Quaternion extends Float32Array
     set(x, y, z, w)
     {
         quat.set(this, x, y, z, w);
+    }
+
+    reset()
+    {
+        this.set(0,0,0,1);
+    }
+
+    identity()
+    {
+        this.reset();
     }
 
     /**

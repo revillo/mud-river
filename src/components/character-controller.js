@@ -159,7 +159,7 @@ export class CharacterController extends Controller
         //tempVec3.y += this.halfHeight + 0.01;
 
         let maxDist = this.groundMaxDistance;
-        let collisionResult = this.context.physicsWorld.castShape(this.context.physicsWorld.colliders, 
+        let collisionResult = this.context.physicsWorld.castShape( 
             tempVec3, tempQuat, this.gravityDirection, 
             this._sweepShape, maxDist, this._sweepFilter);
         

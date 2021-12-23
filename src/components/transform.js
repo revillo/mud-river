@@ -21,7 +21,14 @@ export class Transform extends EntityComponent
 
     start()
     {
-        this.entity.add("moved");
+        this.entity.add(Transform.TAG_MOVED);
+    }
+
+    load(data)
+    {
+        this.setLocalTranslation(data.p);
+        this.setLocalEulers(data.r[0], data.r[1], data.r[2]);
+        this.entity.add(Transform.TAG_MOVED);
     }
 
     //todo optimize - mark children dirty
@@ -176,7 +183,7 @@ export class Transform extends EntityComponent
 
     _markChildrenDirty()
     {
-        this.entity.add("moved");
+        this.entity.add(Transform.TAG_MOVED);
         this.entity.eachChild(e => {
             if (e.has(Transform))
             {
@@ -184,7 +191,7 @@ export class Transform extends EntityComponent
                 return false;
             }
             
-            e.add("moved");
+            e.add(Transform.TAG_MOVED);
             return true;
         });
     }
@@ -212,6 +219,7 @@ export class Transform extends EntityComponent
 
 
 Transform.icon = "Transform"
+Transform.TAG_MOVED = 'moved';
 
 /**
  * 
@@ -249,3 +257,5 @@ Transform.shiftOrigin = function(context, translation)
 
     context.shiftOrigin(translation);
 }
+
+Transform.autoclearTags = [Transform.TAG_MOVED];

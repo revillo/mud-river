@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@dimforge/rapier3d": "^0.3.1",
+    "@dimforge/rapier3d": "^0.7.6",
     "express": "^4.17.1",
     "jsdoc": "^3.6.6"
   },

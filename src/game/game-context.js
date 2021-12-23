@@ -67,10 +67,7 @@ export class GameContext extends EntityPool
         this.updaters = new Map();
         this.updateSystems = [];
         this.shiftSystems = [];
-        
-        this.views = {
-            static_moved : this.with('static', 'moved')
-        }
+        this.autoclearTags = new Set();
 
         window.context = this;
 
@@ -89,7 +86,7 @@ export class GameContext extends EntityPool
         /**
          * @type {Map<number, Body>}
          */
-         this.dynamicBodyMap = new Map();
+         this.bodyMap = new Map();
         
          /**
          * @type {Map<number, GameEntity}
@@ -126,6 +123,10 @@ export class GameContext extends EntityPool
         {
             this.updaters.set(Component, this.with(Component));
         }
+
+        if (Component.autoclearTags) {
+            Component.autoclearTags.forEach(this.autoclearTags.add, this.autoclearTags);
+        }
     }
 
     set renderer(r)
@@ -156,13 +157,14 @@ export class GameContext extends EntityPool
     update(dt, clock)
     {
         this.frameTimers.stop("nextframe");
-        
         this.frameTimers.start("frame");
 
+        //System updates
         this.frameTimers.start("sys")
         this.updateSystems.forEach(sys => sys.update(dt, clock, this));
         this.frameTimers.stop("sys");
 
+        //Component updates
         this.frameTimers.start("comp");
         for (let [Type, view] of this.updaters)
         {
@@ -172,6 +174,7 @@ export class GameContext extends EntityPool
         }
         this.frameTimers.stop("comp");
 
+        //Draw calls
         this.frameTimers.start("render");
         if (this._renderer)
         {
@@ -179,10 +182,12 @@ export class GameContext extends EntityPool
         }
         this.frameTimers.stop("render");
 
-        this.clear("moved");
-        this.frameTimers.stop("frame");
+        //Wrap up
+        for (let tag of this.autoclearTags) {
+            this.clear(tag);
+        }
 
-        
+        this.frameTimers.stop("frame");
         this.frameTimers.start("nextframe");
     }
 

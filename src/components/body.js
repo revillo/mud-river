@@ -43,6 +43,7 @@ export class Body extends EntityComponent
     {
         Object.assign(this.config, config);
         this.type = physicsType;
+        return this;
     }
 
     set type(physicsType)
@@ -64,7 +65,7 @@ export class Body extends EntityComponent
 
         var desc;
 
-        this.entity.remove('static', 'dynamic');
+        this.entity.remove(Body.TAG_SIMULATED, Body.TAG_UNSIMULATED);
 
         switch(physicsType)
         {
@@ -73,17 +74,17 @@ export class Body extends EntityComponent
 
             case Body.STATIC:
             desc = P.RigidBodyDesc.newStatic();
-            this.entity.add('static');
+            this.entity.add(Body.TAG_UNSIMULATED);
             break;
 
             case Body.DYNAMIC:
             desc = P.RigidBodyDesc.newDynamic();
-            this.entity.add('static');
+            this.entity.add(Body.TAG_SIMULATED);
             break;
 
             case Body.KINEMATIC:
             desc = P.RigidBodyDesc.newKinematic();
-            this.entity.add('dynamic');
+            this.entity.add(Body.TAG_UNSIMULATED);
             break;
         }
 
@@ -92,9 +93,9 @@ export class Body extends EntityComponent
         if (desc)
         {
             this._body = this.context.physicsWorld.createRigidBody(desc);
-            this.context.dynamicBodyMap.set(this._body.handle, this);
+            this.context.bodyMap.set(this._body.handle, this);
 
-            this.syncTransformToBody();
+            this.syncBodyFromTransform();
         }
 
         //todo recreate colliders
@@ -106,7 +107,7 @@ export class Body extends EntityComponent
         this.context.colliderMap.set(collider.handle, this.entity);
     }    
 
-    syncTransformToBody()
+    syncBodyFromTransform()
     {
         var v = new Vector3();
 
@@ -116,7 +117,7 @@ export class Body extends EntityComponent
         this._body.setRotation(tempQuat);
     }
 
-    syncBodyToTransform()
+    syncTransformFromBody()
     {
         var pos = this._body.translation();
         tempVec3.set(pos.x, pos.y, pos.z)
@@ -186,11 +187,16 @@ export class Body extends EntityComponent
                     {
                         colliderDesc = P.ColliderDesc.trimesh(prim.verticesPhys, prim.indicesPhys);
                         colliderDesc.setTranslation(tempVec3[0], tempVec3[1], tempVec3[2]);
-                        
                     }
                     else if (thiz.config.shapeType == Body.BOX)
                     {
                         colliderDesc = P.ColliderDesc.cuboid(prim.extents[0], prim.extents[1], prim.extents[2]);
+                        colliderDesc.setTranslation(tempVec3[0] + prim.center[0], tempVec3[1] + prim.center[1], tempVec3[2] + prim.center[2]);
+                    } 
+                    else if (thiz.config.shapeType == Body.SPHERE)
+                    {
+                        const radius = Math.max(...prim.extents);
+                        colliderDesc = P.ColliderDesc.ball(radius);
                         colliderDesc.setTranslation(tempVec3[0] + prim.center[0], tempVec3[1] + prim.center[1], tempVec3[2] + prim.center[2]);
                     }
 
@@ -223,7 +229,7 @@ export class Body extends EntityComponent
                 this.context.colliderMap.delete(this._body.collider(i));
             }
 
-            this.context.dynamicBodyMap.delete(this._body.handle);
+            this.context.bodyMap.delete(this._body.handle);
             this.context.physicsWorld.removeRigidBody(this._body);
             this._body = null;
         }
@@ -239,9 +245,13 @@ Body.KINEMATIC = 3;
 Body.TRIMESH = 4;
 Body.HULL = 5;
 Body.BOX = 6;
+Body.SPHERE = 7;
+
+Body.TAG_UNSIMULATED = 'unsim';
+Body.TAG_SIMULATED = 'sim';
 
 Body.views = {
-    static_moved : ['static', 'moved'],
+    unsim_moved : [Body.TAG_UNSIMULATED, Transform.TAG_MOVED],
     body : [Body]
 }
 
@@ -251,11 +261,11 @@ Body.update = function(dt, clock, context)
     context.physicsWorld.step();
     
     context.physicsWorld.forEachActiveRigidBodyHandle(handle => {
-        context.dynamicBodyMap.get(handle).syncBodyToTransform();
+        context.bodyMap.get(handle).syncTransformFromBody();
     });
 
-    this.views.static_moved(e => {
-        e.get(Body).syncTransformToBody();
+    this.views.unsim_moved(e => {
+        e.get(Body).syncBodyFromTransform();
     });
 }
 
@@ -263,6 +273,6 @@ Body.update = function(dt, clock, context)
 Body.postShift = function(t)
 {
     this.views.body(e => {
-        e.get(Body).syncTransformToBody();
+        e.get(Body).syncBodyFromTransform();
     });
 }
