@@ -8,7 +8,9 @@ import { Body } from "./body.js";
 import { Camera } from "./camera.js";
 import { Transform } from "./transform.js";
 
-export class Controller extends EntityComponent
+const tempQuat = new Quaternion(0,0,0,1);
+
+export class Controlled extends EntityComponent
 {
     isPressed(action)
     {
@@ -51,7 +53,7 @@ export class Controller extends EntityComponent
         this._inputListeners.length = 0;
     }
 
-    destroy()
+    onDetach()
     {
         this.unbindInputs();
     }
@@ -66,18 +68,56 @@ export class Controller extends EntityComponent
     {
         inputManager.removeListener(action, handler);
     }*/
+
+    getMovement(outV3)
+    {
+        outV3.zero();
+
+        let moved = false;
+
+        if (this.isPressed('Forward'))
+        {
+            moved = true;
+            outV3[2] -= 1;
+        }        
+
+        if (this.isPressed('Backward'))
+        {
+            moved = true;
+            outV3[2] += 1;
+        }
+
+        if (this.isPressed('Left'))
+        {
+            moved = true;
+            outV3[0] -= 1;
+        }
+
+        if (this.isPressed('Right'))
+        {
+            moved = true;
+            outV3[0] += 1;
+        }
+
+        if (moved)
+        {
+            outV3.normalize();
+        }
+
+        return moved;
+    }
 }
 
-export class FreeController extends Controller
+export class FreeControlled extends Controlled
 {
     _lookAngles = vec2.create();
     _camera = null;
     _movement = Vector3.new();
 
-    start()
+    onAttach()
     {
         this.entity.ensure(Transform);
-        this._camera = this.entity.createChild(Camera);
+        this._camera = this.entity.createChild(Camera, Transform);
         this.activate();
     }
 
@@ -88,7 +128,6 @@ export class FreeController extends Controller
         this.bindInput("Look", this.look);
         this.bindInput("Aim", this.aim);
     }
-
   
     aim(axis)
     {
@@ -113,27 +152,7 @@ export class FreeController extends Controller
 
     update(dt, clock)
     {
-        vec3.zero(this._movement);
-
-         if (this.isPressed('Forward'))
-        {
-            this._movement[2] -= 1;
-        }        
-
-        if (this.isPressed('Backward'))
-        {
-            this._movement[2] += 1;
-        }
-
-        if (this.isPressed('Left'))
-        {
-            this._movement[0] -= 1;
-        }
-
-        if (this.isPressed('Right'))
-        {
-            this._movement[0] += 1;
-        }
+        this.getMovement(this._movement);
 
         let scale = 6;
 
@@ -141,6 +160,8 @@ export class FreeController extends Controller
         {
             scale = 60;
         }
+
+        this._movement.setLength(scale * dt);
 
         vec3.setLength(this._movement, scale * dt);
         this._movement.rotateMat4(this._camera.get(Transform).worldMatrix);

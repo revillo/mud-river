@@ -7,7 +7,7 @@ import { GPUContext } from "../buff/gpu.js";
 //import { Rasterizer } from "../buff/rasterizer.js";
 import { EntityPool } from "../ecso/ecso.js";
 import { FrameMetrics } from "../util/timer.js";
-import { GameEntity } from "./game-entity.js";
+import { EntityComponent, GameEntity } from "./game-entity.js";
 export * from "./game-entity.js"
 
 export class EventManager
@@ -68,6 +68,11 @@ export class GameContext extends EntityPool
         this.updateSystems = [];
         this.shiftSystems = [];
         this.autoclearTags = new Set();
+
+        /**
+         * @type {EntityComponent}
+         */
+        this.activeController = null;
 
         window.context = this;
 
@@ -146,7 +151,7 @@ export class GameContext extends EntityPool
         return e;
     }
 
-    shiftOrigin(v3)
+    postShiftOrigin(v3)
     {
         for (let shiftSys of this.shiftSystems)
         {
@@ -159,11 +164,6 @@ export class GameContext extends EntityPool
         this.frameTimers.stop("nextframe");
         this.frameTimers.start("frame");
 
-        //System updates
-        this.frameTimers.start("sys")
-        this.updateSystems.forEach(sys => sys.update(dt, clock, this));
-        this.frameTimers.stop("sys");
-
         //Component updates
         this.frameTimers.start("comp");
         for (let [Type, view] of this.updaters)
@@ -173,6 +173,11 @@ export class GameContext extends EntityPool
             });
         }
         this.frameTimers.stop("comp");
+
+        //System updates
+        this.frameTimers.start("sys")
+        this.updateSystems.forEach(sys => sys.update(dt, clock, this));
+        this.frameTimers.stop("sys");
 
         //Draw calls
         this.frameTimers.start("render");
@@ -191,9 +196,9 @@ export class GameContext extends EntityPool
         this.frameTimers.start("nextframe");
     }
 
-    _add(entity, C)
+    _onAttach(entity, c)
     {
-        super._add(entity, C)
-        C.prototype && (entity.get(C)._entity = entity);
+        c._entity = entity;
+        super._onAttach(entity, c);
     }
 }

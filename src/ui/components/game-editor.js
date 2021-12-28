@@ -1,4 +1,4 @@
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 import { ComponentEditor } from "./component-editor.js";
 import { Flex } from "./flex.js";
 import { Metrics } from "./metrics.js";
@@ -13,7 +13,7 @@ let UIColors =
 
 export class GameEditor extends UIComponent
 {
-    start()
+    onAttach()
     {
         this.entity.ensure(Flex);
         this.get(Flex).configure("column");

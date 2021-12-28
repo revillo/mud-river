@@ -115,10 +115,10 @@ export class UIContext extends EntityPool
         this.div.style.height = "100%";
     }
 
-    _add(entity, Component)
+    _onAttach(entity, c)
     {
-        super._add(entity, Component);
-        entity.get(Component)._entity = entity;
+        c._entity = entity;
+        super._onAttach(entity, c);
     }
 
     /**

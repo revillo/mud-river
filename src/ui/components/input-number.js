@@ -1,4 +1,4 @@
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 
 export class InputNumber extends UIComponent
 {

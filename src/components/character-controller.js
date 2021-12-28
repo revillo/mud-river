@@ -6,14 +6,14 @@ import { Quaternion, Vector3 } from "../math/index.js";
 import { Plane } from "../shape/plane.js";
 import { Body } from "./body.js";
 import { Camera } from "./camera.js";
-import { Controller } from "./controller.js";
+import { Controlled } from "./controlled.js";
 import { Transform } from "./transform.js";
 
 const tempQuat = Quaternion.new();
 const tempVec3 = Vector3.new();
 const tempUp = Vector3.new();
 
-export class CharacterController extends Controller
+export class CharacterController extends Controlled
 {
 
     runForce = 30;
@@ -50,7 +50,7 @@ export class CharacterController extends Controller
     _movement = Vector3.new();
     _isLooking = false;
 
-    start()
+    onAttach()
     {
         this.entity.ensure(Transform, Body);
 
@@ -115,6 +115,7 @@ export class CharacterController extends Controller
        
     }
 
+    
     updateCameraTransform()
     {
         //quat.fromEuler(tempQuat, 0, this._lookAngles[0], 0);
@@ -218,7 +219,6 @@ export class CharacterController extends Controller
             this._tryingToMove = true;
             this._movement[0] += 1;
         }
-
     }
 
     updateRunning(dt)

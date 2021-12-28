@@ -37,9 +37,9 @@ class Expiration extends EntityComponent
 
 class ShootingPlayer extends CharacterController
 {
-    start()
+    onAttach()
     {
-        super.start();
+        super.onAttach();
         this.bindInput("Use", this.shootBall)
         this._ballAsset = this.context.gltfManager.fromUrl("gltf/src/ball.gltf");
         const P = this.context.PHYSICS;

@@ -1,5 +1,5 @@
 import { GameEntity } from "../../game/game-context.js";
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 import { Flex } from "./flex.js";
 
 /**
@@ -39,7 +39,7 @@ export class SceneGraph extends UIComponent
     _gameEntity = null
     _expanded = false;
 
-    start()
+    onAttach()
     {
         this.entity.ensure(Flex);
         this.get(Flex).configure("column");
@@ -169,7 +169,7 @@ export class SceneGraph extends UIComponent
 
     }
 
-    destroy()
+    onDetach()
     {
         this.nameSpan.remove();
     }

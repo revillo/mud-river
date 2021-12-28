@@ -19,16 +19,16 @@ export class Transform extends EntityComponent
 
     _dirty = true;
 
-    start()
+    onAttach()
     {
-        this.entity.add(Transform.TAG_MOVED);
+        this.entity.attach(Transform.TAG_MOVED);
     }
 
     load(data)
     {
         this.setLocalTranslation(data.p);
         this.setLocalEulers(data.r[0], data.r[1], data.r[2]);
-        this.entity.add(Transform.TAG_MOVED);
+        this.entity.attach(Transform.TAG_MOVED);
     }
 
     //todo optimize - mark children dirty
@@ -165,14 +165,14 @@ export class Transform extends EntityComponent
         this._fixLocal();
     }
 
-    getWorldTranslation(v)
+    getWorldTranslation(out)
     {
-        this.worldMatrix.getTranslation(v);
+        this.worldMatrix.getTranslation(out);
     }
 
-    getLocalTranslation(v)
+    getLocalTranslation(out)
     {
-        this._localMatrix.getTranslation(v);
+        this._localMatrix.getTranslation(out);
     }
 
     setWorldTranslationRotation(v, q)
@@ -191,7 +191,7 @@ export class Transform extends EntityComponent
                 return false;
             }
             
-            e.add(Transform.TAG_MOVED);
+            e.attach(Transform.TAG_MOVED);
             return true;
         });
     }
@@ -255,7 +255,7 @@ Transform.shiftOrigin = function(context, translation)
         return true;
     });    
 
-    context.shiftOrigin(translation);
+    context.postShiftOrigin(translation);
 }
 
 Transform.autoclearTags = [Transform.TAG_MOVED];

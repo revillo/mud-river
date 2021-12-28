@@ -3,28 +3,15 @@
  */
 export class Entity
 {
+    /**
+     * @type {EntityPool}
+     */
     _context = null;
     components = new Map();
 
     constructor(context)
     {
         this._context = context;
-    }
-
-    _startComponents()
-    {
-        for (let component of this.components.values())
-        {
-            component.start && component.start();
-        }
-    }
-
-    _destroyComponents()
-    {
-        for (let component of this.components.values())
-        {
-            component.destroy && component.destroy();
-        }
     }
 
     /**
@@ -66,30 +53,46 @@ export class Entity
         {
             if (!this.has(C))
             {
-                this.add(C);
+                this.attach(C);
             }
         }
     }
 
-    add(Component)
+    attach(...Components)
     {
-        this._context.add(this, Component);
+        this._context.attach(this, ...Components);
     }
 
-    remove(...Components)
+    detach(...Components)
     {
-        this._context.remove(this, ...Components);
+        this._context.detach(this, ...Components);
     }
 
     destroy()
     {
-        this._context.free(this);
+        this._context.destroy(this);
     }
 
     get context()
     {
         return this._context;
     }
+
+    /**
+     * @deprecated
+     */
+    remove(...Components)
+    {
+        this.detach(...Components);
+    }
+
+    /**
+     * @deprecated 
+     */
+    add(Component)
+    {
+        this.attach(Component);
+    } 
 }
 
 export class EntityPool
@@ -130,60 +133,84 @@ export class EntityPool
         }
     }
 
-    _add(entity, C)
+    // _add(entity, C)
+    // {
+    //     this.sets.get(C).add(entity);
+    //     if (C.prototype)
+    //     {
+    //         entity.components.set(C, new C());
+    //     }
+    // }
+
+    _onAttach(entity, componentInstance)
     {
-        this.sets.get(C).add(entity);
-        if (C.prototype)
-        {
-            entity.components.set(C, new C());
+        componentInstance.onAttach && componentInstance.onAttach(entity);
+    }
+
+    attach(entity, ...Components)
+    {
+        this.ensure(...Components);
+        for (let C of Components) {
+            this.sets.get(C).add(entity);
+            if (C.prototype)
+            {
+                let c = new C();
+                entity.components.set(C, c);
+                this._onAttach(entity, c);
+            }
         }
     }
 
-    add(entity, Component)
-    {
-        this.ensure(Component);
-        //this.sets.get(Component).add(entity);
-        this._add(entity, Component);
+    /**
+     *@deprecated 
+     */
+    remove(entity, ...Components) {
+        this.detach(entity, ...Components);
     }
 
-    remove(entity, ...Components)
+    detach(entity, ...Components)
     {
         for (let Component of Components)
-        {
+        {    
+            let c = entity.get(Component);
+            c && c.onDetach && c.onDetach();
+            entity.components.delete(Component);
             const set = this.sets.get(Component);
             if (set)
             {
                 set.delete(entity);
             }
-    
-            let c = entity.get(Component);
-            c && c.destroy && c.destroy();
-            entity.components.delete(Component);
         }
     }
 
     create(...Components)
     {
-        this.ensure(...Components);
-        let entity = /*this.discarded.pop() ||*/ new this.EntityType(this);
-        for (let C of Components)
-        {
-            this._add(entity, C);
-        }
-
-        entity._startComponents();
-
+        const entity = /*this.discarded.pop() ||*/ new this.EntityType(this);
+        //this.attach(entity, ...Components);
+        entity.ensure(...Components);
         this.size++;
-
         return entity;
     }
 
+    /**
+     * @deprecated 
+     */
     free(entity)
     {
+        this.destroy(entity);
+    }
+
+    /**
+     * 
+     * @param {Entity} entity 
+     */
+    destroy(entity) 
+    {
         const sets = this.sets;
-        entity._destroyComponents();
         for (let C of entity.components.keys())
         {
+            let c = entity.get(C);
+            c && c.onDetach && c.onDetach();
             sets.get(C).delete(entity);
         }
         entity.components.clear();
@@ -202,13 +229,13 @@ export class EntityPool
             if (C.prototype)
             {
                 
-                let destroy = Boolean(C.prototype.destroy);
+                let destroy = Boolean(C.prototype.onDetach);
             
                 if (destroy)
                 {
                     for (let entity of set)
                     {
-                        entity.get(C).destroy();
+                        entity.get(C).onDetach();
                         entity.components.delete(C);
                     }
                 }

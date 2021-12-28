@@ -11,16 +11,11 @@ import { Vector3 } from "../math/index.js";
 export class Camera extends EntityComponent
 {
     fovY = toRadian(60);
-    near = 0.01;
+    near = 0.1;
     far = 1000;
 
     _tanX = 0.577;
     _tanY = 0.577;
-
-    start()
-    {
-        this.entity.ensure(Transform);
-    }
 
     /**
      * 
@@ -31,7 +26,7 @@ export class Camera extends EntityComponent
      */
     getRay(clipX, clipY, outOrigin, outDirection)
     {
-        let wm = this.get(Transform).worldMatrix;
+        let wm = Transform.getWorldMatrix(this.entity);
 
         wm.getTranslation(outOrigin);
 
@@ -53,6 +48,6 @@ export class Camera extends EntityComponent
      */
     getViewMatrix(outMat4)
     {
-        mat4.affineInvert(outMat4, this.get(Transform).worldMatrix);
+        mat4.affineInvert(outMat4, Transform.getWorldMatrix(this.entity));
     }
 }

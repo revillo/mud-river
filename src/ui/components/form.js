@@ -1,9 +1,9 @@
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 import { InputNumber } from "./input-number.js";
 
 export class Form extends UIComponent
 {
-    start()
+    onAttach()
     {
         this.div.style.display = "grid";
         this.div.style.gridTemplateColumns = "50% 50%";

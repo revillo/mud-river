@@ -174,7 +174,6 @@ export class ForwardRenderer
                 tempVec3, tempQuat, this.frustumShape, 
                 this.interactionGroups, 
                 (handle) => {
-                  
                     this.regionsToRender[i] = thiz.context.cullMap.get(handle);
                     i+=1;
                     return true;
@@ -202,6 +201,13 @@ export class ForwardRenderer
         //console.log(numRendered);
 
         this.context.frameTimers.stop("prim");
+    }
+
+    renderAll() {
+        let thiz = this;
+        this.context.with(PrimRender)(e => {
+            thiz.renderPrim(e.get(PrimRender));
+        });
     }
 
     render()
@@ -235,7 +241,8 @@ export class ForwardRenderer
         this.preRender();
        
         this.renderCullWorld();
-    
+
+        //this.renderAll();
         //this.context.frameTimers.start("prim");
         //this.renderView((e) => thiz.renderPrim(e.get(PrimRender)));
         //this.context.frameTimers.stop("prim");

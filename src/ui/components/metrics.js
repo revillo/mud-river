@@ -1,5 +1,5 @@
 import { FrameMetrics } from "../../util/timer.js";
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 
 export class Metrics extends UIComponent
 {

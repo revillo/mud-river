@@ -60,6 +60,23 @@ export class Vector3 extends Float32Array
         this[2] *= s;
     }
 
+    invert()
+    {
+        this[0] = -this[0];
+        this[1] = -this[1];
+        this[2] = -this[2];
+    }
+
+    toString()
+    {
+        return `[${this.x}, ${this.y}, ${this.z}]`;
+    }
+
+    getSign(array)
+    {
+        vec3.sign(array, this);
+    }
+
     copy(v)
     {
         this[0] = v[0];
@@ -75,6 +92,11 @@ export class Vector3 extends Float32Array
     getLength()
     {
         return vec3.length(this);
+    }
+
+    getDistance(s)
+    {
+        return vec3.dist(this, s);
     }
 
     setLength(s)

@@ -79,7 +79,7 @@ export class CullRegion extends EntityComponent
         this.primRenders.push(primRender)
     }
 
-    destroy()
+    onDetach()
     {
         this.context.cullMap.delete(this._collider.handle);
         this.context.cullWorld.removeRigidBody(this._cullBody);
@@ -182,7 +182,7 @@ export class PrimRender extends EntityComponent
         }    
     }
 
-    destroy()
+    onDetach()
     {
         this.context.gpu.deleteGeometryBinding(this.prim.binding);
     }
@@ -536,7 +536,7 @@ export class ModelRender extends EntityComponent
             .catch(err => {err && console.error(err)});
     }
 
-    destroy()
+    onDetach()
     {
         this._lifetime.end();
     }

@@ -1,8 +1,8 @@
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 
 export class Flex extends UIComponent
 {
-    start()
+    onAttach()
     {
         this.entity.style.display = "flex";
     }

@@ -1,4 +1,4 @@
-import { UIComponent } from "../ui.js";
+import { UIComponent } from "../ui-context.js";
 import { Flex } from "./flex.js";
 import { Form } from "./form.js";
 
@@ -7,7 +7,7 @@ export class ComponentEditor extends UIComponent
 
     _gameComponent = null;
 
-    start()
+    onAttach()
     {
         //this.entity.ensure(Flex);
         //this.get(Flex).configure("column");
@@ -41,7 +41,7 @@ export class ComponentEditor extends UIComponent
         }
     }
 
-    destroy()
+    onDetach()
     {
         this.nameSpan.remove();
     }

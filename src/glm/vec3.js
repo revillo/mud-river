@@ -867,3 +867,11 @@ const temp1 = create();
 const temp2 = create();
 
 export {temp0, temp1, temp2}
+
+
+export function sign(a, b)
+{
+  a[0] = b[0] >= 0 ? 1 : -1;
+  a[1] = b[1] >= 0 ? 1 : -1;
+  a[2] = b[2] >= 0 ? 1 : -1;
+}

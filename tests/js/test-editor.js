@@ -1,9 +1,9 @@
-import {UIContext} from "../../src/ui/ui.js"
+import {UIContext} from "../../src/ui/ui-context.js"
 import {GameEditor} from "../../src/ui/components/game-editor.js"
 import {WebApp} from "../../src/app/webapp.js"
 import {GameContext, EntityComponent} from "../../src/game/game-context.js"
 import {GameLayer} from "../../src/app/layers/game-layer.js"
-import {FreeController} from "../../src/components/controller.js"
+import {FreeControlled} from "../../src/components/controlled.js"
 import {Camera} from "../../src/components/camera.js"
 import { Transform } from "../../src/components/transform.js";
 import { Body } from "../../src/components/body.js";
@@ -45,11 +45,11 @@ let start = () => {
     anim.get(Transform).setLocalPosition(0, 5.5, -8);
 
     //startAsset.getPromise().then(() => {
-        let player = gameContext.create(FreeController);
+        let player = gameContext.create(FreeControlled);
         player.name = "Player"
         //Renderer
         let renderer = new ForwardRenderer(gameContext);
-        renderer.mainCamera = player.get(FreeController)._camera.get(Camera);
+        renderer.mainCamera = player.get(FreeControlled)._camera.get(Camera);
     
     //});
 
