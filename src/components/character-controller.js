@@ -173,7 +173,7 @@ export class CharacterController extends Controlled
             this._onGround = true;
             this._groundDistance = collisionResult.toi;
    
-            this._groundPlane.setNormalXYZ(collisionResult.normal1);
+            this._groundPlane.setNormal(collisionResult.normal1);
 
             let cushionY = Math.max(0.0, this.groundMaxDistance - this._groundDistance) / this.groundMaxDistance;
             cushionY = Math.pow(cushionY, 0.5) * this.cushionForce; 

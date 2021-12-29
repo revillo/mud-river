@@ -14,11 +14,6 @@ export class Plane
 
     setNormal(normal)
     {
-        this.normal.copy(normal);
-    }
-
-    setNormalXYZ(normal)
-    {
         this.normal.set(normal.x, normal.y, normal.z);
     }
 

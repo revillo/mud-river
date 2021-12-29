@@ -14,6 +14,7 @@ export class SpringArm extends EntityComponent
     mountEntity = null;
 
     _ray = null;
+    _length = 5;
 
     onAttach()
     {
@@ -22,8 +23,9 @@ export class SpringArm extends EntityComponent
         this.collisionGroups = Collision.getCollisionGroups([Collision.GAZE], [Collision.STATIC]);
     }
 
-    adjustMount(length)
+    set length(length)
     {
+        this._length = length;
         this.mountEntity.get(Transform).setLocalPosition(0, 0, length);
     }
 

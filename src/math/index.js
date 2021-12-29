@@ -1,5 +1,23 @@
 import { mat4, quat, vec2, vec3 } from "../glm/index.js";
 
+export function clampf(x, lo, hi)
+{
+    if (x > hi) return hi;
+    if (x < lo) return lo;
+    return x;
+}
+
+export function lerpf(a, b, t)
+{
+    return b * t + a * (1.0 - t);
+}
+
+export function dtlerpf(a, b, rate, dt)
+{
+    let t = Math.pow(2, -rate * dt);
+    return lerpf(b, a, t);
+}
+
 export class Vector2 extends Float32Array
 {
     constructor(x = 0, y = 0)
