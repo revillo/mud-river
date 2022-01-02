@@ -1,6 +1,5 @@
 import { Lifetime } from "../assets/assets.js";
 import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
-import { EntityComponent, GameEntity } from "../game/game-context.js";
 import { mat4, vec3 } from "../glm/index.js";
 import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
@@ -8,11 +7,11 @@ import { GLTFEnum } from "./../assets/gltf.js"
 import { BinType, BufferUsage } from "../buff/gpu-types.js";
 import { BufferManager } from "../buff/buffer.js";
 import { ShaderSkinning } from "../buff/shader-mods/skinning.js";
-import { ShaderNormals } from "../buff/shader-mods/normals.js";
 import { ShaderInstances } from "../buff/shader-mods/instances.js";
 import { AttributeLayoutGenerator, DefaultAttributes } from "../buff/attribute.js";
-import { Entity } from "../ecso/ecso.js";
 import { Collision } from "../game/collision.js";
+import { GameComponent } from "../game/game-component.js";
+import { GameEntity } from "../game/game-entity.js";
 
 let tempVec3 = new Vector3();
 let temp2Vec3 = new Vector3();
@@ -20,7 +19,7 @@ let tempQuat = new Quaternion();
 let temp2Quat = new Quaternion();
 let tempMat4 = new Matrix4();
 
-export class Rig extends EntityComponent
+export class Rig extends GameComponent
 {
     /**
      * 
@@ -62,12 +61,13 @@ export class Rig extends EntityComponent
     }
 }
 
+//Used for additional culling logic
 let noCull = function() 
 {
     return true;
 }
 
-export class CullRegion extends EntityComponent
+export class CullRegion extends GameComponent
 {
     primRenders = [];
     _cullBody = null;
@@ -79,96 +79,72 @@ export class CullRegion extends EntityComponent
         this.primRenders.push(primRender)
     }
 
-    onDetach()
-    {
-        this.context.cullMap.delete(this._collider.handle);
-        this.context.cullWorld.removeRigidBody(this._cullBody);
+    configureSphere(center, radius) {
+        this.addToCullWorld(
+            this.context.PHYSICS.ColliderDesc.ball(radius)
+            .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
+            .setTranslation(center.x, center.y, center.z)
+        );
     }
 
-    addToCullWorld()
+    configureBox(center, extents) {
+        this.get(CullRegion).addToCullWorld( 
+            this.context.PHYSICS.ColliderDesc.cuboid(extents.x, extents.y, extents.z)
+                .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
+                .setTranslation(center.x, center.y, center.z)
+        );
+    }
+
+    onDetach()
+    {
+        if (this._collider) {
+            this.context.cullMap.delete(this._collider.handle);
+        }
+
+        if (this._cullBody) {
+            this.context.cullWorld.removeRigidBody(this._cullBody);
+        }
+    }
+
+    addToCullWorld(colliderDesc)
     {
         if (this._cullBody)
         {
-            this.remakeCollider();
+            this.remakeCollider(colliderDesc);
             return;
         }
-
         let P = this.context.PHYSICS;
         var desc = P.RigidBodyDesc.newStatic();
         this._cullBody = this.context.cullWorld.createRigidBody(desc);
-        this._collider = this.context.cullWorld.createCollider(this.colliderDesc, this._cullBody.handle);
+        this._collider = this.context.cullWorld.createCollider(colliderDesc, this._cullBody.handle);
         this.context.cullMap.set(this._collider.handle, this);
     }
 
-    remakeCollider()
+    remakeCollider(colliderDesc)
     {
         this.context.cullMap.delete(this._collider.handle);
         this.context.cullWorld.removeCollider(this._collider);
-        this._collider = this.context.cullWorld.createCollider(this.colliderDesc, this._cullBody.handle);
+        this._collider = this.context.cullWorld.createCollider(colliderDesc, this._cullBody.handle);
         this.context.cullMap.set(this._collider.handle, this);
     }
-
 }
 
-export class CullSphere extends CullRegion
-{
-    configure(center, radius)
-    {
-        let P = this.context.PHYSICS;
-
-        this.colliderDesc = P.ColliderDesc.ball(radius)
-            .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
-            .setTranslation(center.x, center.y, center.z);
-
-        this.addToCullWorld();
-    }
+CullRegion.views = {
+    moved : [CullRegion, Transform.TAG_MOVED]
 }
 
-CullSphere.views = {
-    moved : [CullSphere, Transform.TAG_MOVED]
-}
-
-CullSphere.update = function() {
+CullRegion.update = function() {
     this.views.moved(e => {
+        let cullBody = e.get(CullRegion)._cullBody;
+        if (!cullBody) return;
         const wm = Transform.getWorldMatrix(e);
-        let cullBody = e.get(CullSphere)._cullBody;
         wm.getTranslation(tempVec3);
-        //console.log(tempVec3);
         cullBody.setTranslation(tempVec3);
     });
 }
 
-export class CullBox extends CullRegion
+export class PrimRender extends GameComponent
 {
-    configure(center, extents)
-    {
-        let P = this.context.PHYSICS;
-        
-        this.colliderDesc = P.ColliderDesc.cuboid(extents.x, extents.y, extents.z)
-            .setCollisionGroups(Collision.getCollisionGroups([Collision.CULL], [Collision.GAZE]))
-            .setTranslation(center.x, center.y, center.z);
-
-        this.addToCullWorld();
-    }
-}
-
-CullBox.views = {
-    moved: [CullBox, Transform.TAG_MOVED]
-}
-
-CullBox.update = function() {
-    this.views.moved(e => {
-        const wm = Transform.getWorldMatrix(e);
-        let cullBody = e.get(CullBox)._cullBody;
-        wm.decompose(tempVec3, tempQuat);
-        cullBody.setTranslation(tempVec3);
-        cullBody.setRotation(tempQuat);
-    });
-}
-
-export class PrimRender extends EntityComponent
-{
-
     configure(prim, autoCull)
     {
         this.prim = prim;
@@ -176,9 +152,9 @@ export class PrimRender extends EntityComponent
 
         if (autoCull)
         {
-            this.entity.ensure(CullBox);
-            this.get(CullBox).configure(this.prim.center, this.prim.extents);
-            this.get(CullBox).addPrim(this);
+            this.entity.ensure(CullRegion);
+            this.get(CullRegion).configureBox(this.prim.center, this.prim.extents);
+            this.get(CullRegion).addPrim(this);
         }    
     }
 
@@ -206,13 +182,19 @@ PrimRender.update = function(dt, clock, context)
 }
 
 
-export class ModelRender extends EntityComponent
+export class ModelRender extends GameComponent
 {
     _asset = null;
     _lifetime = new Lifetime;
     _doLoadedList = new Array();
     _instanceBuffer = null;
     _instanceHoles = [];
+    _gltf = null;
+
+    programAsset = null;
+    animProgramAsset = null;
+    animationTime = null;
+    animationBlending = null;
     
     config = 
     {
@@ -282,19 +264,27 @@ export class ModelRender extends EntityComponent
         return this.gltf.animations[index].name;
     }
 
-    getAnimationIndex(name)
+    setAnimationNamed(name)
     {
-        return this.gltf.animationMap.get(name);
+        this.animation = this.gltf.animationMap.get(name);
     }
 
     setAnimationIndex(index)
     {
         this.animation = this.gltf.animations[index];
+        if (!this.animation) {
+            console.error("here" + index, index, this.gltf);
+        }
+    }
+
+    isLoaded()
+    {
+        return this.gltf;
     }
 
     doLoaded(fn)
     {
-        if (this.gltf)
+        if (this.isLoaded())
         {
             fn.call(this);
         }
@@ -304,30 +294,51 @@ export class ModelRender extends EntityComponent
         }
     }
 
+    playNamedAnimation(name)
+    {
+        this.entity.attach(ModelRender.ANIMATING_TAG);
+        this.setAnimationNamed(name);
+        this.animationTime = 0.0;
+        this.animationBlending = 0.2;
+    }
+
+    /**
+     * @deprecated
+     * @param {number} index 
+     */
     playAnimation(index)
     {
-        this.entity.add("animating");
+        this.entity.attach(ModelRender.ANIMATING_TAG);
         this.setAnimationIndex(index);
         this.animationTime = 0.0;
     }
 
     stopAnimating()
     {
-        this.entity.remove("animating");
+        this.entity.detach(ModelRender.ANIMATING_TAG);
     }
 
     _advanceAnimationTime(dt)
     {
-        this.setAnimationTime(this.animationTime + dt);
+        this.animationBlending -= dt;
+
+        let bt = 1.0 - this.animationBlending / 0.2;
+        let blend = 10 + bt * 20;
+
+        this.setAnimationTime(this.animationTime + dt, this.animationBlending > 0 ? blend : 0, dt);
     }
 
-    setAnimationTime(time, loop = true)
+    setAnimationTime(time, blending, dt, loop = true)
     {
-        this.animationTime = time;
+        if (!this.animation) {
+            return;
+        }
+
         this.looping = loop;
 
         if(loop) time = (time % this.animation.duration);
-        
+        this.animationTime = time;
+
         
         for (let channel of this.animation.channels)
         {
@@ -367,11 +378,13 @@ export class ModelRender extends EntityComponent
                 tempQuat.set(vs[i], vs[i + 1], vs[i + 2], vs[i + 3]);
                 i += 4;
                 temp2Quat.set(vs[i], vs[i + 1], vs[i + 2], vs[i + 3]);
-
-                
                 tempQuat.slerpTo(temp2Quat, frameDelta);
                 
-                entity.get(Transform).setLocalRotation(tempQuat);
+                if (blending > 0) {
+                    entity.get(Transform).smoothSlerpLocalRotation(tempQuat, blending, dt);
+                } else {
+                    entity.get(Transform).setLocalRotation(tempQuat);
+                }
             }
             else if (channel.target.path == GLTFEnum.TRANSLATION)
             {
@@ -381,7 +394,12 @@ export class ModelRender extends EntityComponent
                 temp2Vec3.set(vs[i], vs[i+1], vs[i+2]);
 
                 vec3.lerp(tempVec3, tempVec3, temp2Vec3, frameDelta);
-                entity.get(Transform).setLocalTranslation(tempVec3);
+
+                if (blending > 0) {
+                    entity.get(Transform).smoothLerpLocalTranslation(tempVec3, blending, dt);
+                } else {
+                    entity.get(Transform).setLocalTranslation(tempVec3);
+                }
             }
             
         }
@@ -542,9 +560,10 @@ export class ModelRender extends EntityComponent
     }
 }
 
+ModelRender.ANIMATING_TAG = "animating";
 
 ModelRender.views = {
-    animating : ["animating"]
+    animating : [ModelRender.ANIMATING_TAG]
 };
 
 ModelRender.update = function(dt, clock)

@@ -1,18 +1,13 @@
-import { EntityComponent } from "../game/game-context.js";
 import { quat, vec3, mat4 } from "../glm/index.js";
-import { temp2 } from "../glm/mat4.js";
 import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
+import { GameComponent } from "../game/game-component.js"
 
 let tempVec3 = Vector3.new();
 let temp2Vec3 = Vector3.new();
 let temp3Vec3 = Vector3.new();
 let tempQuat = Quaternion.new();
 
-/**
- * @class
- * @extends EntityComponent
- */
-export class Transform extends EntityComponent
+export class Transform extends GameComponent
 {
     _worldMatrix = Matrix4.new();
     _localMatrix = Matrix4.new();
@@ -86,6 +81,34 @@ export class Transform extends EntityComponent
         this._fixLocal();
     }
 
+    worldRotateRight(rads)
+    {
+        this.worldMatrix.getRight(tempVec3);
+        quat.setAxisAngle(tempQuat, tempVec3, rads);
+        //quat.normalize(tempQuat);
+
+        this._worldMatrix.getUp(temp2Vec3);
+        this._worldMatrix.getForward(temp3Vec3);
+        
+        vec3.transformQuat(temp2Vec3, temp2Vec3, tempQuat);
+        vec3.transformQuat(temp3Vec3, temp3Vec3, tempQuat);
+
+        this._worldMatrix.setRightUpForward(tempVec3, tem2pVec3, temp3Vec3);
+        this._fixLocal();
+    }
+
+    localRotate(q)
+    {
+        this._localMatrix.rotate(q);
+        this._markDirty();
+    }
+
+    localPreRotate(q)
+    {
+        this._localMatrix.preRotate(q);
+        this._markDirty();
+    }
+
     setLocalUpForward(up, forward)
     {
         vec3.cross(tempVec3, forward, up);
@@ -97,6 +120,7 @@ export class Transform extends EntityComponent
         this._markDirty();
     }
 
+    //In degrees
     setLocalEulers(rx, ry, rz)
     {
         quat.fromEuler(tempQuat, rx, ry, rz);
@@ -107,6 +131,25 @@ export class Transform extends EntityComponent
     {
         this._localMatrix.setRotation(q);
         this._markDirty();
+    }
+
+    smoothSlerpLocalRotation(q, rate, dt)
+    {
+        this.getLocalRotation(tempQuat);
+        tempQuat.smoothSlerpTo(q, rate, dt);
+        this.setLocalRotation(tempQuat);
+    }
+
+    smoothLerpLocalTranslation(v, rate, dt)
+    {
+        this.getLocalTranslation(tempVec3);
+        tempVec3.smoothLerpTo(v, rate, dt);
+        this.setLocalTranslation(tempVec3);
+    }
+
+    getLocalRotation(outQ)
+    {
+        this._localMatrix.getRotation(outQ);
     }
 
     setLocalMatrix(m)

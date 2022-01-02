@@ -1,7 +1,6 @@
 import {WebApp} from "../../src/app/webapp.js"
-import {GameContext, EntityComponent} from "../../src/game/game-context.js"
+import {GameContext} from "../../src/game/game-context.js"
 import {GameLayer} from "../../src/app/layers/game-layer.js"
-import {CharacterController} from "../../src/components/character-controller.js"
 import {Camera} from "../../src/components/camera.js"
 import { Transform } from "../../src/components/transform.js";
 import { Body } from "../../src/components/body.js";
@@ -11,11 +10,12 @@ import { Vector3 } from "../../src/math/index.js"
 import { Timer } from "../../src/util/timer.js"
 import { vec3 } from "../../src/glm/index.js"
 import { ShaderNormals } from "../../src/buff/shader-mods/normals.js"
-import { Collision } from "../../src/index.js"
+import { Collision, FirstPersonPlayer, GameComponent, ThirdPersonPlayer } from "../../src/index.js"
+import {WyrlPlayer} from "../../../src/components/wyrl-player.js"
 
 let tempVec3 = Vector3.new();
 
-class Expiration extends EntityComponent
+class Expiration extends GameComponent
 {
     timeLeft = 10;
 
@@ -35,7 +35,7 @@ class Expiration extends EntityComponent
 }
 
 
-class ShootingPlayer extends CharacterController
+class ShootingPlayer extends FirstPersonPlayer
 {
     onAttach()
     {
@@ -74,10 +74,9 @@ class ShootingPlayer extends CharacterController
     }
 }
 
-
-let start = () => {
+let app = new WebApp("GameFPS", 1);
+app.ready(() => {
     //App
-    let app = new WebApp("GameFPS", 1);
     let gameContext = new GameContext(app.mainCanvas);
     let gameLayer = new GameLayer(gameContext);
     app.addLayer(gameLayer, 1);
@@ -85,36 +84,26 @@ let start = () => {
     const {gltfManager} = gameContext;
 
     //Scene
-    let cube = gameContext.create(ModelRender, Transform, Body);
-    
-    let startAsset = gltfManager.fromUrl("gltf/scene/scene.gltf");
-
-    cube.get(Transform).setLocalPosition(0, -1, -5);
-    cube.get(ModelRender).configure(startAsset);
-
-    cube.get(Body).configure(Body.STATIC)
-    cube.get(Body).asset = startAsset;
+    let scene = gameContext.create(ModelRender, Transform, Body);
+    let sceneAsset = gltfManager.fromUrl("gltf/scene/scene.gltf");
+    scene.get(Transform).setLocalPosition(0, -1, -5);
+    scene.get(ModelRender).configure(sceneAsset);
+    scene.get(Body).configure(Body.STATIC)
+    scene.get(Body).asset = sceneAsset;
 
     //let player = gameContext.create(FreeController, Camera, Transform);
 
-    startAsset.getPromise().then(() => {
-        let player = gameContext.create(ShootingPlayer);
-
-        //Renderer
+    sceneAsset.getPromise().then(() => {
         let renderer = new ForwardRenderer(gameContext);
+        
+        let player = gameContext.create(ShootingPlayer);
         renderer.mainCamera = player.get(ShootingPlayer)._camera.get(Camera);
     
+        // let player = gameContext.create(ThirdPersonPlayer);
+        // player.get(ThirdPersonPlayer).setCharacterAsset(gltfManager.fromUrl("gltf/animated/debugman2.gltf"));
+        // renderer.mainCamera = player.get(ThirdPersonPlayer).camera.get(Camera);
+    
+        // let player = gameContext.create(WyrlPlayer);
+        // renderer.mainCamera = player.get(WyrlPlayer).camera.get(Camera);
     });
-
-    app.start();
-}
-        
-
-if (window.RAPIER)
-{
-    start()
-}
-else
-{
-    window.addEventListener("RAPIER", () => start());
-}
+});

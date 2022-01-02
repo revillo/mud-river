@@ -117,7 +117,7 @@ export class AssetManager //Abstract
 
     fromUri(uri)
     {
-        
+        return this.fromUrl(uri);
     }
 
     fromAssets(name)

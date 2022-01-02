@@ -1,4 +1,4 @@
-import { GameEntity } from "../../game/game-context.js";
+import { GameEntity } from "../../game/game-entity.js";
 import { UIComponent } from "../ui-context.js";
 import { Flex } from "./flex.js";
 

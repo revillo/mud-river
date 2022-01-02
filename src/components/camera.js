@@ -1,14 +1,10 @@
 import { toRadian } from "../glm/common.js";
 import { mat4 } from "../glm/index.js";
 import { Transform } from "./transform.js";
-import {EntityComponent} from "../game/game-context.js"
+import { GameComponent } from "../game/game-component.js";
 import { Vector3 } from "../math/index.js";
 
-/**
- * @class
- * @extends {EntityComponent}
- */
-export class Camera extends EntityComponent
+export class Camera extends GameComponent
 {
     fovY = toRadian(60);
     near = 0.1;

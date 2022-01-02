@@ -183,6 +183,14 @@ export class GPUContext
         }
        
         this._reportError("Shader Error", stage + " " + gl.getShaderInfoLog(shader));
+        
+        let lines = source.split("\n");
+        let i = 0;
+        for (i = 0; i < lines.length; ++i) {
+            lines[i] = `${i} ${lines[i]}`;
+        }
+        this._reportError("Shader Error", lines.join("\n"));
+
         gl.deleteShader(shader);
         return null;
     }
@@ -378,16 +386,22 @@ export class GPUContext
 
     clear(color)
     {
+        this.clearColor(color);
+        this.clearDepth();
+    }
+
+    clearColor(color)
+    {
         const gl = this.gl;
         gl.clearColor(color.r, color.g, color.b, color.a);
-        this.clearDepth();
+        gl.clear(gl.COLOR_BUFFER_BIT);
     }
 
     clearDepth()
     {    
         const gl = this.gl;
-        gl.clear(gl.COLOR_BUFFER_BIT);
         gl.clearDepth(1);
+        gl.clear(gl.DEPTH_BUFFER_BIT);
     }
 
     unbindProgram()

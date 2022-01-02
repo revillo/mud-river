@@ -7,8 +7,8 @@ import { GPUContext } from "../buff/gpu.js";
 //import { Rasterizer } from "../buff/rasterizer.js";
 import { EntityPool } from "../ecso/ecso.js";
 import { FrameMetrics } from "../util/timer.js";
-import { EntityComponent, GameEntity } from "./game-entity.js";
-export * from "./game-entity.js"
+import { GameComponent } from "./game-component.js";
+import { GameEntity } from "./game-entity.js";
 
 export class EventManager
 {
@@ -44,6 +44,11 @@ export class EventManager
  */
 export class GameContext extends EntityPool
 {
+    /**
+     * @type {GLTFManager}
+     */
+    gltfManager = null;
+
     constructor(canvas, gravity)
     {
         super(GameEntity);
@@ -70,7 +75,7 @@ export class GameContext extends EntityPool
         this.autoclearTags = new Set();
 
         /**
-         * @type {EntityComponent}
+         * @type {GameComponent}
          */
         this.activeController = null;
 

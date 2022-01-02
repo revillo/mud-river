@@ -1,18 +1,17 @@
+import { Transform } from "./transform.js";
 import { Lifetime } from "../assets/assets.js";
 import { Collision } from "../game/collision.js";
-import { EntityComponent } from "../game/game-context.js";
 import { mat4, quat, vec3 } from "../glm/index.js";
+import { GameComponent } from "../game/game-component.js";
 import { Quaternion, Vector3 } from "../math/index.js";
-import { Transform } from "./transform.js";
 
 const tempVec3 = new Vector3();
 const tempQuat = new Quaternion();
 
-
 /**
  * @class
  */
-export class Body extends EntityComponent {
+export class Body extends GameComponent {
     colliders = [];
     _type = Body.DISABLED;
     _body = null;
@@ -96,13 +95,13 @@ export class Body extends EntityComponent {
         this.context.colliderMap.set(collider.handle, this.entity);
     }
 
-    syncBodyFromTransform() {
+    syncBodyFromTransform(translation = true, rotation = true) {
         var v = new Vector3();
 
         this.get(Transform).worldMatrix.decompose(tempVec3, tempQuat);
 
-        this._body.setTranslation(tempVec3);
-        this._body.setRotation(tempQuat);
+        translation && this._body.setTranslation(tempVec3);
+        rotation && this._body.setRotation(tempQuat);
     }
 
     syncTransformFromBody() {
@@ -203,7 +202,6 @@ export class Body extends EntityComponent {
             this.context.physicsWorld.removeRigidBody(this._body);
             this._body = null;
         }
-
     }
 }
 

@@ -1,6 +1,6 @@
-import { EntityComponent } from "../game/game-context.js";
+import { GameComponent } from "../index.js";
 
-export class Dispatcher extends EntityComponent
+export class Dispatcher extends GameComponent
 {
     listenMap = new Map();
 

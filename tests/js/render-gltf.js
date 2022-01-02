@@ -41,7 +41,7 @@ class RenderGLTF extends RenderDemo
                         bindBuffers: function(gpu, renderBin)
                         {
                             //textureAsset.bind(renderBin.program, "t_baseColor", 0);
-                            prim.material.bindTextures(gpu, renderBin.program);
+                            prim.material.bindTextures(renderBin.program);
                             localsBuffer.bindUniformBlock(0, renderBin.program)
                         }
                     })

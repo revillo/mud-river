@@ -1,5 +1,6 @@
-import { Entity, EntityPool } from "../ecso/ecso.js";
-import { EntityComponent, GameEntity } from "../game/game-context.js";
+import { EntityPool } from "../ecso/ecso.js";
+import { GameComponent } from "../game/game-component.js";
+import { GameEntity } from "../game/game-entity.js";
 
 
 export class UIEntity extends GameEntity
@@ -81,7 +82,7 @@ export class UIEntity extends GameEntity
     }
 }
 
-export class UIComponent extends EntityComponent
+export class UIComponent extends GameComponent
 {
     /**
      * @return {UIEntity}

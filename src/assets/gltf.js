@@ -120,6 +120,7 @@ export class GLTFAsset extends Asset
             })
             .catch(error => {
                 console.error(error);
+                return Promise.reject();
             })
         
         return this;

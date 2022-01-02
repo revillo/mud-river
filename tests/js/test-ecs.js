@@ -65,7 +65,7 @@ function testECSO()
     }
     for (let i = 0; i < numIters; i++)
     {
-        pool.create(new Position);
+        pool.create(Position);
     }
     console.log("ECSO Insertion", timer.tickMS());
 

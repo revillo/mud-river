@@ -1,41 +1,11 @@
-import { EntityPool, Entity } from "../ecso/ecso.js";
+import { Entity } from "../ecso/ecso.js";
+import { GameContext } from "./game-context.js";
 
 /**
  * @callback EntityCallback
  * @param {GameEntity}
  * @return {boolean} - return false to skip this entity's children 
  */
-
-/**
- * @class
- */
-export class EntityComponent {
-    _entity = null;
-
-    /**
-     * @return {GameEntity}
-     */
-    get entity() {
-        return this._entity;
-    }
-
-    /**
-     * @return {GameContext}
-     */
-    get context() {
-        return this._entity.context;
-    }
-
-    /**
-     * @template ComponentType
-     * @param {new ComponentType} ComponentType 
-     * @return {ComponentType} component
-     */
-    get(ComponentType) {
-        return this._entity.get(ComponentType);
-    }
-}
-
 
 /**
  * @class
@@ -94,5 +64,13 @@ export class GameEntity extends Entity {
         this.parent = null;
         this.eachChild(child => child.destroy());
         super.destroy();
+    }
+
+    /**
+     * @return {GameContext}
+     */
+    get context()
+    {
+        return this._context;
     }
 }

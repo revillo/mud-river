@@ -75,3 +75,9 @@ Math.approach = function(a, b, amt)
 
   return a + Math.sign(diff) * amt;
 }
+
+Math.lerpDt = function(a, b, rate, dt)
+{
+  let t = Math.pow(2, -rate * dt);
+  return Math.lerp(b, a, t);
+}

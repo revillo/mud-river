@@ -21,15 +21,15 @@ export class WebApp extends App
         this.mainCanvas.style.height = "100%"
 
         
-        this._addEvents(['load', 'resize', 'mousewheel', 'mouseup', 'mousedown', 'mousemove', 'keydown', 'keyup']);
+        this._addEvents(['load', 'resize', 'mousewheel', 'mouseup', 'mousedown', 'mousemove', 'keydown', 'keyup', 'blur']);
         this.gameClock = 0;
-        this.docLoaded = false;
+        this.domLoaded = false;
 
         this.startRequest = false;
 
         if (document.readyState === "complete")
         {
-            this.docLoaded = true;
+            this.domLoaded = true;
         }
 
         window.app = this;
@@ -37,13 +37,51 @@ export class WebApp extends App
         this.on_resize();
     }
 
+    ready(startFn)
+    {
+        let self = this;
+        this.load().then(() => {
+            startFn(); 
+            self.start();
+        });
+    }
+
+    load()
+    {
+        return Promise.all([this.loadPhysics(), this.loadDom()]);
+    }
+
+    loadDom()
+    {
+        let self = this;
+        return new Promise((resolve) => {
+            if (self.domLoaded) {
+                resolve()
+            }
+            else {
+                self.onDomLoad = resolve;
+            }
+        });
+    }
+
+    loadPhysics()
+    {
+        return new Promise((resolve) => {
+            if (window.RAPIER) {
+                resolve()
+            }
+            else {
+                window.addEventListener("RAPIER", resolve);
+            }
+        });
+    }
+
     _addEvents(eventList)
     {
-        var thiz = this;
-
+        let self = this;
         eventList.forEach(name => {
             const methodName = `on_${name}`;
-            window.addEventListener(name, (e) => thiz.dispatch(methodName, e));    
+            window.addEventListener(name, (e) => self.dispatch(methodName, e));    
         });
     }
 
@@ -65,15 +103,11 @@ export class WebApp extends App
 
     start()
     {
-        if (this.docLoaded)
-        {
-            this.timer.tick();
-            this.frame();
-        }
-        else
-        {
-            this.startRequest = true;
-        }
+        let self = this;
+        this.load().then(() => {
+            self.timer.tick();
+            self.frame();
+        });
     }
 
     on_resize()
@@ -84,12 +118,9 @@ export class WebApp extends App
 
     on_load()
     {     
-        this.docLoaded = true;
-
-        if (this.startRequest)
-        { 
-            this.startRequest = false;
-            this.start();
+        this.domLoaded = true;
+        if (this.onDomLoad) {
+            this.onDomLoad();
         }
     }
 }

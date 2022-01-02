@@ -21,6 +21,8 @@ const DefaultBindings =
         2 : "Look"
     },
 
+    mouse_wheel : "Scroll",
+
     keys : 
     {
         KeyW : "Forward",
@@ -45,10 +47,8 @@ export class InputLayer
         this.eventManager = context.eventManager;
         this.canvas = context.canvas;
 
-        
         this.canvas.requestPointerLock = this.canvas.requestPointerLock || this.canvas.mozRequestPointerLock;
         document.exitPointerLock = document.exitPointerLock || document.mozExitPointerLock;
-
     }
 
     isPressed(action)
@@ -135,7 +135,6 @@ export class InputLayer
     {
         const action = this.bindings.mouse_move;
 
-        
         if (action)
         {
             this.dispatchAction(action, {
@@ -149,7 +148,17 @@ export class InputLayer
         return true;
     }
 
-
+    on_mousewheel(e)
+    {
+        const action = this.bindings.mouse_wheel;
+        if (action)
+        {
+            this.dispatchAction(action, { 
+                dx: e.wheelDeltaX,
+                dy: e.wheelDeltaY
+            });
+        }
+    }
     
     on_keydown(e)
     {
@@ -176,6 +185,11 @@ export class InputLayer
             });
         }
         return true;
+    }
+
+    on_blur()
+    {
+        this.buttonTracker.clear();
     }
 
 }

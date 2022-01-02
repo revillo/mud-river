@@ -1,22 +1,95 @@
+import { toRadian } from "../glm/common.js";
 import { mat4, quat, vec2, vec3 } from "../glm/index.js";
 
-export function clampf(x, lo, hi)
-{
-    if (x > hi) return hi;
-    if (x < lo) return lo;
-    return x;
+const radToDeg = 180 / Math.PI;
+const PI2 = Math.PI * 2;
+const PI = Math.PI;
+
+export class Angle {
+    rads = 0;
+
+    constructor(radians = 0)
+    {
+        this.rads = radians;
+    }
+
+    copy(otherAngle)
+    {
+        this.radians = otherAngle.radians;
+    }
+    
+    static newRadians(radians)
+    {
+        return new Angle(radians);
+    }
+
+    static newDegrees(degrees)
+    {
+        return new Angle(degrees / radToDeg);
+    }
+
+    set radians(radians)
+    {
+        this.rads = radians;
+    }
+
+    set degrees(degrees)
+    {
+        this.rads = degrees / radToDeg;
+    }
+
+    get degrees() 
+    {
+        return this.rads * radToDeg;
+    }
+
+    get radians() 
+    {
+        return this.rads;
+    }
+
+    /**
+     * 
+     * @param {number} rad 
+     * @returns {number}
+     */
+    static _normalize(rad)
+    {
+        let r = rad % PI2;
+        return r >= 0? r : (r + PI2); 
+    }
+
+    delta(angleTarget)
+    {
+        let to = Angle._normalize(angleTarget.radians);
+        let from = Angle._normalize(this.radians);
+
+        let sub = to - from;
+
+        if (sub > PI) return sub - PI2;
+        if (sub < -PI) return PI2 + sub;
+        return sub;
+    }
+
+    lerpTo(angleTarget, t)
+    {
+        let delta = this.delta(angleTarget);
+        this.radians = this.radians + delta * t;
+    }
+
+    /**
+     * 
+     * @param {Angle} angleTarget 
+     * @param {number} rate 
+     * @param {number} dt 
+     */
+    lerpToDt(angleTarget, rate, dt)
+    {
+        let t = 1-Math.pow(2, -rate * dt);
+        this.lerpTo(angleTarget, t);
+    }
 }
 
-export function lerpf(a, b, t)
-{
-    return b * t + a * (1.0 - t);
-}
-
-export function dtlerpf(a, b, rate, dt)
-{
-    let t = Math.pow(2, -rate * dt);
-    return lerpf(b, a, t);
-}
 
 export class Vector2 extends Float32Array
 {
@@ -162,6 +235,22 @@ export class Vector3 extends Float32Array
         this.reset();
     }
 
+    dot(v)
+    {
+        return vec3.dot(this, v);
+    }
+
+    lerpTo(v, t)
+    {
+        vec3.lerp(this, this, v, t);
+    }
+
+    smoothLerpTo(v, rate, dt)
+    {
+        let t = Math.pow(2, -rate * dt);
+        vec3.lerp(this, v, this, t);       
+    }
+
     packOctahedral(outVec2)
     {  
         let xy = tempVec2;
@@ -204,6 +293,8 @@ Vector3.new = () => new Vector3;
 Vector3.DOWN = new Vector3(0, -1, 0);
 Vector3.UP = new Vector3(0, 1, 0);
 Vector3.ZERO = new Vector3(0, 0, 0);
+Vector3.RIGHT = new Vector3(1, 0, 0);
+Vector3.FORWARD = new Vector3(0, 0, -1);
 
 let tempVec3 = new Vector3();
 let temp2Vec3 = new Vector3();
@@ -262,6 +353,21 @@ export class Quaternion extends Float32Array
         this.reset();
     }
 
+    setAxisAngle(v, rads)
+    {
+        quat.setAxisAngle(this, v, rads);
+    }
+
+    multiply(q)
+    {
+        quat.multiply(this, q, this);
+    }
+
+    preMultiply(q)
+    {
+        quat.multiply(this, this, q);
+    }
+
     /**
      * 
      * @param {Quaternion} q - quat to slerp to
@@ -271,6 +377,12 @@ export class Quaternion extends Float32Array
     {
         quat.slerp(this, this, q, t);
     }
+
+    smoothSlerpTo(q, rate, dt)
+    {
+        let t = 1.0 - Math.pow(2, -rate * dt);
+        quat.slerp(this, this, q, t);
+    }
 }
 /**
  * @return {Quaternion}
@@ -278,6 +390,7 @@ export class Quaternion extends Float32Array
 Quaternion.new = () => new Quaternion;
 
 let tempQuat = new Quaternion();
+let tempM4 = mat4.create();
 
 /**
  * @class
@@ -326,6 +439,28 @@ export class Matrix4 extends Float32Array
         this.setRightUpForward(tempVec3, up, temp2Vec3);
     }
 
+    rotate(q)
+    {
+        mat4.fromQuat(tempM4, q);
+        mat4.multiply(this, tempM4, this);
+    }
+
+    preRotate(q)
+    {
+        mat4.fromQuat(tempM4, q);
+        mat4.multiply(this, this, tempM4);    
+    }
+
+    multiply(m4)
+    {
+        mat4.multiply(this, m4, this);
+    }
+
+    preMultiply(m4)
+    {
+        mat4.multiply(this, this, m4);
+    }
+
     rotateUp(rad)
     {
         this.getUp(tempVec3);
@@ -339,6 +474,11 @@ export class Matrix4 extends Float32Array
         vec3.transformQuat(temp3Vec3, temp3Vec3, tempQuat);
 
         this.setRightUpForward(temp3Vec3, tempVec3, temp2Vec3);
+    }
+
+    rotateUpDegrees(deg)
+    {
+        this.rotateUp(toRadian(deg));
     }
 
     setRightUpForward(right, up, forward)
@@ -356,9 +496,9 @@ export class Matrix4 extends Float32Array
         this[10] = -forward[2];
     }
 
-    getRotation(rotOut)
+    getRotation(qOut)
     {
-        mat4.getRotation(rotOut, this);
+        mat4.getRotation(qOut, this);
     }
 
     getScale(scaleOut)
