@@ -48,17 +48,6 @@ export class Controlled extends GameComponent
         this.unbindInputs();
     }
 
-    /*
-    Component.prototype.addInputListener = function(action, handler)
-    {
-        inputManager.addListener(action, handler);
-    }
-
-    Component.prototype.removeInputListener = function(action, handler)
-    {
-        inputManager.removeListener(action, handler);
-    }*/
-
     getMovement(outV3)
     {
         outV3.zero();
@@ -83,11 +72,12 @@ export class Controlled extends GameComponent
             outV3[0] += 1;
         }
 
-        if (moved)
+        if (outV3.getLength() > 0)
         {
             outV3.normalize();
+            return true;
         }
 
-        return outV3.getLength() > 0.0;
+        return false;
     }
 }

@@ -1,6 +1,6 @@
-import { DefaultAttributes } from "../../src/buff/attribute.js";
-import { RasterProgram } from "../../src/buff/program.js";
-import { ShaderSimpleTexture } from "../../src/buff/shader-mods/simple-texture.js";
+import { DefaultAttributes } from "../../src/gfx/attribute.js";
+import { RasterProgram } from "../../src/gfx/program.js";
+import { ShaderSimpleTexture } from "../../src/gfx/shader-mods/simple-texture.js";
 import { mat4 } from "../../src/glm/index.js";
 import { RenderDemo } from "./render-demo.js";
 

@@ -1,5 +1,5 @@
-import { DefaultAttributes } from "../buff/attribute.js";
-import { BufferType, BufferUsage, BinType } from "../buff/gpu-types.js";
+import { DefaultAttributes } from "../gfx/attribute.js";
+import { BufferType, BufferUsage, BinType } from "../gfx/gpu-types.js";
 import { mat4 } from "../glm/index.js";
 import { Vector3 } from "../math/index.js";
 import { prune } from "../util/object.js";

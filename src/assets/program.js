@@ -1,5 +1,5 @@
-import { DefaultAttributes } from "../buff/attribute.js";
-import { RasterProgram } from "../buff/program.js";
+import { DefaultAttributes } from "../gfx/attribute.js";
+import { RasterProgram } from "../gfx/program.js";
 import { Asset, AssetManager } from "./assets.js";
 
 export class ProgramAsset extends Asset

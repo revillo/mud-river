@@ -1,14 +1,14 @@
 import { Lifetime } from "../assets/assets.js";
-import { ShaderSimpleTexture } from "../buff/shader-mods/simple-texture.js";
+import { ShaderSimpleTexture } from "../gfx/shader-mods/simple-texture.js";
 import { mat4, vec3 } from "../glm/index.js";
 import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 import { GLTFEnum } from "./../assets/gltf.js"
-import { BinType, BufferUsage } from "../buff/gpu-types.js";
-import { AttributeBlockBuffer, BufferManager, UniformBlockBuffer } from "../buff/buffer.js";
-import { ShaderSkinning } from "../buff/shader-mods/skinning.js";
-import { ShaderInstances } from "../buff/shader-mods/instances.js";
-import { AttributeLayoutGenerator, DefaultAttributes } from "../buff/attribute.js";
+import { BinType, BufferUsage } from "../gfx/gpu-types.js";
+import { AttributeBlockBuffer, BufferManager, UniformBlockBuffer } from "../gfx/buffer.js";
+import { ShaderSkinning } from "../gfx/shader-mods/skinning.js";
+import { ShaderInstances } from "../gfx/shader-mods/instances.js";
+import { AttributeLayoutGenerator, DefaultAttributes } from "../gfx/attribute.js";
 import { Collision } from "../game/collision.js";
 import { GameComponent } from "../game/game-component.js";
 import { GameEntity } from "../game/game-entity.js";

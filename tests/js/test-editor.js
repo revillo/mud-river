@@ -9,7 +9,7 @@ import { Body } from "../../src/components/body.js";
 import {ForwardRenderer} from "../../src/game/forward-renderer.js"
 import { ModelRender } from "../../src/components/model-render.js";
 import {EditorLayer} from "../../src/app/layers/editor-layer.js"
-import { ShaderNormals } from "../../src/buff/shader-mods/normals.js"
+import { ShaderNormals } from "../../src/gfx/shader-mods/normals.js"
 import { FreePlayer } from "../../src/index.js"
 
 let app = new WebApp("GameFPS", 1);

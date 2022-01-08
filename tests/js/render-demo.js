@@ -1,14 +1,14 @@
-import { ShaderStage, BufferType, BufferUsage, BinType } from '../../src/buff/gpu-types.js';
-import { Rasterizer } from '../../src/buff/rasterizer.js';
-import { GPUContext} from '../../src/buff/gpu.js'
-import { RasterShaderBuilder} from '../../src/buff/shader-builder.js'
+import { ShaderStage, BufferType, BufferUsage, BinType } from '../../src/gfx/gpu-types.js';
+import { Rasterizer } from '../../src/gfx/rasterizer.js';
+import { GPUContext} from '../../src/gfx/gpu.js'
+import { RasterShaderBuilder} from '../../src/gfx/shader-builder.js'
 import { mat4, vec3, quat, glMatrix } from '../../src/glm/index.js'
-import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/buff/attribute.js';
-import {UniformBlockBuffer, BufferManager} from '../../src/buff/buffer.js'
-import { RasterProgram } from '../../src/buff/program.js';
+import { AttributeLayoutGenerator, DefaultAttributes } from '../../src/gfx/attribute.js';
+import {UniformBlockBuffer, BufferManager} from '../../src/gfx/buffer.js'
+import { RasterProgram } from '../../src/gfx/program.js';
 import { TextureManager } from '../../src/assets/texture.js';
-import { ShaderUV0 } from '../../src/buff/shader-mods/uv0.js';
-import { ShaderSimpleTexture } from '../../src/buff/shader-mods/simple-texture.js';
+import { ShaderUV0 } from '../../src/gfx/shader-mods/uv0.js';
+import { ShaderSimpleTexture } from '../../src/gfx/shader-mods/simple-texture.js';
 import { GLTFManager } from '../../src/assets/gltf.js';
 import { Timer } from '../../src/util/timer.js';
 

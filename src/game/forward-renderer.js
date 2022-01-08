@@ -1,5 +1,5 @@
-import { BinType } from "../buff/gpu-types.js";
-import { GPUContext } from "../buff/gpu.js";
+import { BinType } from "../gfx/gpu-types.js";
+import { GPUContext } from "../gfx/gpu.js";
 import { ModelRender, PrimRender, Rig } from "../components/model-render.js";
 import { Transform } from "../components/transform.js";
 import { mat4 } from "../glm/index.js";

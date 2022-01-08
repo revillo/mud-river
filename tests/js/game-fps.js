@@ -9,7 +9,7 @@ import { ModelRender } from "../../src/components/model-render.js";
 import { Vector3 } from "../../src/math/index.js"
 import { Timer } from "../../src/util/timer.js"
 import { vec3 } from "../../src/glm/index.js"
-import { ShaderNormals } from "../../src/buff/shader-mods/normals.js"
+import { ShaderNormals } from "../../src/gfx/shader-mods/normals.js"
 import { Collision, FirstPersonPlayer, GameComponent, ThirdPersonPlayer } from "../../src/index.js"
 import {WyrlPlayer} from "../../../src/components/wyrl-player.js"
 
