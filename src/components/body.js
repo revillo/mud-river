@@ -219,11 +219,19 @@ Body.TAG_UNSIMULATED = 'unsim';
 Body.TAG_SIMULATED = 'sim';
 
 Body.views = {
-    unsim_moved: [Body.TAG_UNSIMULATED, Transform.TAG_MOVED],
+    unsim_moved: [Body.TAG_UNSIMULATED, Transform.TAG_MOVED, Body],
     body: [Body]
 }
 
 Body.update = function (dt, clock, context) {
+
+    if (dt < 0.0001 || dt > 1) {
+        dt = (1.0/60.0);
+        console.error("Bad timestep:", dt);
+    }
+
+    //testing
+    context.cullWorld.timestep = dt;
     context.physicsWorld.timestep = dt;
     context.physicsWorld.step();
 

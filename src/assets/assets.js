@@ -13,6 +13,8 @@ export class Lifetime
     {
         return this._promise;
     }
+
+    //end()
 }
 
 let assetUUID = 0;
@@ -88,7 +90,7 @@ export class AssetManager //Abstract
     constructor()
     {
         this.assets = new Map();
-        this.assetsDir = "../assets/";
+        this.assetsDir = "/";
     }
 
     setAssetDir(dir)
@@ -98,6 +100,7 @@ export class AssetManager //Abstract
 
     /**
      * @param {string} url 
+     * @returns {Asset}
      */
     fromUrl(url)
     {
@@ -120,11 +123,15 @@ export class AssetManager //Abstract
         return this.fromUrl(uri);
     }
 
+    /**
+     * @param {string} url 
+     * @returns {Asset}
+     */
     fromAssets(name)
     {
         return this.fromUrl(this.assetsDir + name);
     }
-    
+
     loadBatch(batch)
     {
         return new BatchLoad(this, batch);

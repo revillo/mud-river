@@ -81,3 +81,12 @@ Math.lerpDt = function(a, b, rate, dt)
   let t = Math.pow(2, -rate * dt);
   return Math.lerp(b, a, t);
 }
+
+export function saturate(x)
+{
+  return Math.clamp(x, 0.0, 1.0);
+}
+
+export function remap(x, lo, hi) {
+  return saturate((x - lo) / (hi  - lo));
+}

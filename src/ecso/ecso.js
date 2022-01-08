@@ -33,8 +33,7 @@ export class Entity
     {        
         for (let C of Components)
         {
-            let has = C.prototype ? (this.components.has(C)) : this._context.has(this, C);
-            if (!has) return false;
+            if (!this.components.has(C)) return false;
         }
         return true;
     }
@@ -117,7 +116,7 @@ export class EntityPool
     has(entity, Component)
     {
         const set = this.sets.get(Component);
-        return Boolean(set && set.has(entity)) 
+        return (set != undefined) && set.has(entity);
     }
 
     ensure(...Components)
@@ -157,6 +156,10 @@ export class EntityPool
                 let c = new C();
                 entity.components.set(C, c);
                 this._onAttach(entity, c);
+            } 
+            else 
+            {
+                entity.components.set(C, C);
             }
         }
     }
@@ -176,10 +179,7 @@ export class EntityPool
             c && c.onDetach && c.onDetach();
             entity.components.delete(Component);
             const set = this.sets.get(Component);
-            if (set)
-            {
-                set.delete(entity);
-            }
+            set && set.delete(entity);
         }
     }
 

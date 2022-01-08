@@ -226,11 +226,6 @@ export class GLTFAsset extends Asset
             {
                 node.children.forEach((nodeIndex, index) => nodeHelper(nodeIndex, index, node.children, node.matrix));
             }
-
-            if (node.skin != undefined)
-            {
-                node.skin = gltf.skins[node.skin];
-            }
         }
 
         gltf.scenes[0].nodes.forEach((nodeIndex, index) => nodeHelper(nodeIndex, index, gltf.scenes[0].nodes, mat4.create()));

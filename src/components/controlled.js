@@ -63,29 +63,23 @@ export class Controlled extends GameComponent
     {
         outV3.zero();
 
-        let moved = false;
-
         if (this.isPressed('Forward'))
         {
-            moved = true;
             outV3[2] -= 1;
         }        
 
         if (this.isPressed('Backward'))
         {
-            moved = true;
             outV3[2] += 1;
         }
 
         if (this.isPressed('Left'))
         {
-            moved = true;
             outV3[0] -= 1;
         }
 
         if (this.isPressed('Right'))
         {
-            moved = true;
             outV3[0] += 1;
         }
 
@@ -94,6 +88,6 @@ export class Controlled extends GameComponent
             outV3.normalize();
         }
 
-        return moved;
+        return outV3.getLength() > 0.0;
     }
 }

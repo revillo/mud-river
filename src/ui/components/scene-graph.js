@@ -15,9 +15,12 @@ const makeEntityName = function(gameEntity)
         {
             names.push(`<button><img src="${SceneGraph.imgPath}/icon/${Component.icon}.png"></button>`);
         }
-        else
+        else if (Component.name)
         {
             names.push(`<button>${Component.name.substr(0, 6)}</button>`);
+        } else 
+        {
+            names.push(`<button>${Component.substr(0,6)}</button>`)
         }
     });
 

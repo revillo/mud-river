@@ -431,11 +431,25 @@ export class Matrix4 extends Float32Array
         out[2] = this[2];
     }
 
+    //TODO make safe
     setUpForward(up, forward)
     {
+        if (Math.abs(vec3.dot(up, forward)) > 0.999) {
+            let x = forward[0];
+            let y = forward[1];
+            let z = forward[2];
+            forward[0] = up[2];
+            forward[1] = -up[0];
+            forward[2] = up[1];
+            this.setUpForward(up, forward);
+            vec3.set(forward, x, y, z);
+            return;
+        }
+
         vec3.cross(tempVec3, forward, up);
         tempVec3.normalize();
         vec3.cross(temp2Vec3, up, tempVec3);
+        temp2Vec3.normalize();
         this.setRightUpForward(tempVec3, up, temp2Vec3);
     }
 

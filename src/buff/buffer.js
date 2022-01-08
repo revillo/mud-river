@@ -67,6 +67,14 @@ class BlockBuffer
         this.gpu = gpu;
     }
 
+    freeBufferGPU()
+    {
+        if (this.bufferViewGPU) {
+            this.gpu.deleteBuffer(this.bufferViewGPU.buffer);
+            this.bufferViewGPU = null;
+        }
+    }
+
     uploadBlocks(start, count)
     {
         start = start || 0;
@@ -206,7 +214,6 @@ export class BufferManager
         }
     }
 
-
     allocVertexBufferView(arrayBufferView, usage = BufferUsage.STATIC)
     {
         return this.allocBufferView(BufferType.VERTEX, usage, arrayBufferView);
@@ -246,7 +253,6 @@ export class BufferManager
 
     allocInstanceBlockBuffer(count, schema, bufferUsage = BufferUsage.DYNAMIC)
     {
-
         let abb = new AttributeBlockBuffer(count, schema);
         let bv = this.allocEmptyBufferView(BufferType.ATTRIBUTE, bufferUsage, abb.count * abb.blockSize);
         abb.setBufferViewGPU(bv, this.gpu);

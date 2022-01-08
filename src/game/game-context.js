@@ -144,6 +144,11 @@ export class GameContext extends EntityPool
         this._renderer = r;
     }
 
+    get renderer()
+    {
+        return this._renderer;
+    }
+
     /**
      * 
      * @param  {...any} Components 

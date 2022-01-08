@@ -5,7 +5,7 @@ import { Matrix4, Quaternion, Vector3 } from "../math/index.js";
 import { Transform } from "./transform.js";
 import { GLTFEnum } from "./../assets/gltf.js"
 import { BinType, BufferUsage } from "../buff/gpu-types.js";
-import { BufferManager } from "../buff/buffer.js";
+import { AttributeBlockBuffer, BufferManager, UniformBlockBuffer } from "../buff/buffer.js";
 import { ShaderSkinning } from "../buff/shader-mods/skinning.js";
 import { ShaderInstances } from "../buff/shader-mods/instances.js";
 import { AttributeLayoutGenerator, DefaultAttributes } from "../buff/attribute.js";
@@ -21,6 +21,13 @@ let tempMat4 = new Matrix4();
 
 export class Rig extends GameComponent
 {
+    /**
+     * @type {UniformBlockBuffer}
+     */
+    bindMatrices = null;
+    invBinds = null;
+    joints = null;
+
     /**
      * 
      * @param {GLTFSkin} skin 
@@ -49,7 +56,7 @@ export class Rig extends GameComponent
 
     computeBindMatrices()
     {        
-        mat4.affineInvert(tempMat4, this.get(Transform).worldMatrix);
+        mat4.affineInvert(tempMat4, Transform.getWorldMatrix(this.entity));
 
         for (let i = 0; i < this.joints.length; i++)
         {
@@ -57,6 +64,13 @@ export class Rig extends GameComponent
 
             mat4.affineMultiply(block.joint, tempMat4, this.joints[i].get(Transform).worldMatrix);
             mat4.affineMultiply(block.joint, block.joint, this.invBinds[i]);
+        }
+    }
+
+    onDetach()
+    {
+        if (this.bindMatrices) {
+            this.bindMatrices.freeBufferGPU();
         }
     }
 }
@@ -145,10 +159,15 @@ CullRegion.update = function() {
 
 export class PrimRender extends GameComponent
 {
-    configure(prim, autoCull)
+    prim = null;
+    autoCull = true;
+    rig = null;
+
+    configure(prim, autoCull, rig)
     {
         this.prim = prim;
         this.autoCull = autoCull;
+        this.rig = rig;
 
         if (autoCull)
         {
@@ -187,7 +206,16 @@ export class ModelRender extends GameComponent
     _asset = null;
     _lifetime = new Lifetime;
     _doLoadedList = new Array();
+    /**
+     * @type {AttributeBlockBuffer}
+     */
     _instanceBuffer = null;
+
+    /**
+     * @type {UniformBlockBuffer}
+     */
+    _localsBuffer = null;
+
     _instanceHoles = [];
     _gltf = null;
 
@@ -421,7 +449,7 @@ export class ModelRender extends GameComponent
         const gltf = this._asset.gltf;
         this.gltf = gltf;
         const prims = [];
-        const thiz = this;
+        const self = this;
         
         /**
          * @type {Map<number, GameEntity>}
@@ -435,24 +463,33 @@ export class ModelRender extends GameComponent
 
         let instLayout = null;
 
-        if (thiz.config.isInstanced)
+        if (self.config.isInstanced)
         {
             //todo
             let instGen = new AttributeLayoutGenerator(null, [DefaultAttributes.INSTANCE_MATRIX], false, false);
-            instLayout = instGen.generateAttributeLayout(null, thiz._instanceBuffer.getInstanceBufferView())
+            instLayout = instGen.generateAttributeLayout(null, self._instanceBuffer.getInstanceBufferView())
         }
 
-        this.localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", gltf.primitiveCount, program.uniformBlocks.Locals);
+        this._localsBuffer = bufferManager.allocUniformBlockBuffer("Locals", gltf.primitiveCount, program.uniformBlocks.Locals);
+
+        if (gltf.skins) {
+            gltf.skins.forEach(skin => {
+                let rig = self.entity.createChild(Rig);
+                rig.get(Rig).configure(skin, bufferManager);
+                self.rigs.push(rig);
+            });
+        }
 
         gltf.meshes.forEach(mesh => {
             mesh.primitives.forEach(prim => {    
 
-                prims[prim.id] ={
+                prims[prim.id] = {
+                    //todo delete geometry binding
                     binding: gpu.createGeometryBinding(prim.vertexLayout, prim.indexLayout, instLayout),
-                    instanceConfig : thiz.config,
+                    instanceConfig : self.config,
                     extents : prim.extents,
                     center: prim.center,
-                    locals : thiz.localsBuffer.getBlock(prim.id),
+                    locals : self._localsBuffer.getBlock(prim.id),
                     program : program,
                     material : prim.material
                 };
@@ -466,36 +503,33 @@ export class ModelRender extends GameComponent
          */
         function nodeHelper(node, parentEntity)
         {
-            
             let entity = parentEntity.createChild(Transform);
             entity.get(Transform).setLocalMatrix(node.localMatrix);
-            thiz.nodeEntityMap.set(node.id, entity);    
+            self.nodeEntityMap.set(node.id, entity);    
 
             if(node.mesh)
             {
-                if (node.skin)
-                {
-                    entity.add(Rig);
-                    entity.get(Rig).configure(node.skin, bufferManager);
-                    thiz.rigs.push(entity);
-                }
 
                 node.mesh.primitives.forEach(prim =>{
-                    if (node.skin)
+
+                    let primEntity = entity.createChild(PrimRender, Transform.TAG_MOVED);
+                    let rig = null;
+
+                    if (node.skin !== undefined)
                     {
                         //thiz.animProgramAsset = thiz.animProgramAsset || 
-                        prims[prim.id].program = thiz.animProgramAsset.program;
+                        prims[prim.id].program = self.animProgramAsset.program;
+                        rig = self.rigs[node.skin];
                     }
-                    let primEntity = entity.createChild(PrimRender, Transform.TAG_MOVED);
 
-                    if (thiz.config.cullRegion)
+                    if (self.config.cullRegion)
                     {
-                        primEntity.get(PrimRender).configure(prims[prim.id], false);
-                        thiz.config.cullRegion.addPrim(primEntity.get(PrimRender));
+                        primEntity.get(PrimRender).configure(prims[prim.id], false, rig);
+                        self.config.cullRegion.addPrim(primEntity.get(PrimRender));
                     }
                     else
                     {
-                        primEntity.get(PrimRender).configure(prims[prim.id], thiz.config.autoCull);
+                        primEntity.get(PrimRender).configure(prims[prim.id], self.config.autoCull, rig);
                     }
                 });
             }
@@ -528,7 +562,7 @@ export class ModelRender extends GameComponent
             this.setAnimationTime(0);
         }
 
-        this._doLoadedList.forEach(fn => fn.call(thiz));
+        this._doLoadedList.forEach(fn => fn.call(self));
     }
 
     set asset(gltfAsset)
@@ -557,6 +591,13 @@ export class ModelRender extends GameComponent
     onDetach()
     {
         this._lifetime.end();
+        if (this._instanceBuffer) {
+            this._instanceBuffer.freeBufferGPU();
+        }
+
+        if (this._localsBuffer) {
+            this._localsBuffer.freeBufferGPU();
+        }
     }
 }
 

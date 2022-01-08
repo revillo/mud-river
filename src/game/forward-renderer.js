@@ -74,9 +74,9 @@ export class ForwardRenderer
             this.firstPrim = false;
         }
 
-        if (primComponent.entity.parent.has(Rig))
+        if (primComponent.rig)
         {
-            primComponent.entity.parent.get(Rig).bind(program);
+            primComponent.rig.get(Rig).bind(program);
         }
 
         prim.material && prim.material.bindTextures(program);
@@ -162,7 +162,6 @@ export class ForwardRenderer
     {
         this.context.frameTimers.start("cull");
         const thiz = this;
-
         this.cullWorld.step();
 
         let i = 0;
